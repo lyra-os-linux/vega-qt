@@ -1,5 +1,11 @@
 # Vega — Control Center
 
+> [!WARNING]
+> Este repositório é a futura interface Qt do Vega para o flavor KDE
+> experimental. Ele foi derivado do projeto GTK para preservar o histórico,
+> mas ainda não contém uma implementação Qt funcional e não participa da
+> primeira Alpha KDE.
+
 *[Leia em português](README.pt-br.md)*
 
 Vega is a native control center built exclusively for openSUSE. It brings
