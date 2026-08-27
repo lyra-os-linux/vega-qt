@@ -23,6 +23,10 @@ class SystemBackend final : public QObject {
     Q_PROPERTY(QStringList kernels READ kernels NOTIFY hardwareChanged)
     Q_PROPERTY(QVariantList volumes READ volumes NOTIFY storageChanged)
     Q_PROPERTY(QVariantList users READ users NOTIFY usersChanged)
+    Q_PROPERTY(QVariantList networkInterfaces READ networkInterfaces NOTIFY networkChanged)
+    Q_PROPERTY(QVariantList wifiNetworks READ wifiNetworks NOTIFY networkChanged)
+    Q_PROPERTY(bool firewallEnabled READ firewallEnabled NOTIFY networkChanged)
+    Q_PROPERTY(QString firewallZone READ firewallZone NOTIFY networkChanged)
 public:
     explicit SystemBackend(QObject *parent = nullptr);
     bool connected() const { return m_connected; }
@@ -44,6 +48,10 @@ public:
     QStringList kernels() const { return m_kernels; }
     QVariantList volumes() const { return m_volumes; }
     QVariantList users() const { return m_users; }
+    QVariantList networkInterfaces() const { return m_networkInterfaces; }
+    QVariantList wifiNetworks() const { return m_wifiNetworks; }
+    bool firewallEnabled() const { return m_firewallEnabled; }
+    QString firewallZone() const { return m_firewallZone; }
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void refreshSoftware();
     Q_INVOKABLE void searchSoftware(const QString &query);
@@ -56,6 +64,7 @@ public:
     Q_INVOKABLE void refreshHardware();
     Q_INVOKABLE void refreshStorage();
     Q_INVOKABLE void refreshUsers();
+    Q_INVOKABLE void refreshNetwork();
 signals:
     void changed();
     void softwareChanged();
@@ -64,6 +73,7 @@ signals:
     void hardwareChanged();
     void storageChanged();
     void usersChanged();
+    void networkChanged();
 private:
     bool m_connected = false;
     QString m_status;
@@ -85,6 +95,10 @@ private:
     QStringList m_kernels;
     QVariantList m_volumes;
     QVariantList m_users;
+    QVariantList m_networkInterfaces;
+    QVariantList m_wifiNetworks;
+    bool m_firewallEnabled = false;
+    QString m_firewallZone;
 
 private slots:
     void onTransactionProgress(uint transactionId, uint percent, const QString &message);

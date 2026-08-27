@@ -44,6 +44,7 @@ SystemBackend::SystemBackend(QObject *parent) : QObject(parent)
     refreshHardware();
     refreshStorage();
     refreshUsers();
+    refreshNetwork();
     auto bus = QDBusConnection::systemBus();
     bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Software", "TransactionProgress",
                 this, SLOT(onTransactionProgress(uint,uint,QString)));
@@ -318,4 +319,44 @@ void SystemBackend::refreshUsers()
         array.endArray();
     }
     emit usersChanged();
+}
+
+void SystemBackend::refreshNetwork()
+{
+    m_networkInterfaces.clear();
+    m_wifiNetworks.clear();
+    QDBusInterface network(Service, ObjectPath, "org.lyraos.Vega1.Network", QDBusConnection::systemBus());
+    const QDBusMessage interfaces = network.call(QStringLiteral("ListInterfaces"));
+    if (interfaces.type() == QDBusMessage::ReplyMessage && !interfaces.arguments().isEmpty()) {
+        const QDBusArgument array = qvariant_cast<QDBusArgument>(interfaces.arguments().first());
+        array.beginArray();
+        while (!array.atEnd()) {
+            QString name, type, state, ipv4, ipv6, gateway, dns, mac, speed, ssid, device;
+            uint signal = 0; bool autoconf = false;
+            array.beginStructure();
+            array >> name >> type >> state >> ipv4 >> ipv6 >> gateway >> dns >> mac >> speed >> ssid >> signal >> device >> autoconf;
+            array.endStructure();
+            m_networkInterfaces.append(QVariantMap{{"name", name}, {"type", type}, {"state", state},
+                {"ipv4", ipv4}, {"speed", speed}, {"ssid", ssid}, {"device", device}});
+        }
+        array.endArray();
+    }
+    const QDBusMessage wifi = network.call(QStringLiteral("ListWifi"));
+    if (wifi.type() == QDBusMessage::ReplyMessage && !wifi.arguments().isEmpty()) {
+        const QDBusArgument array = qvariant_cast<QDBusArgument>(wifi.arguments().first());
+        array.beginArray();
+        while (!array.atEnd()) {
+            QString ssid, security, device; uint signal = 0; bool active = false;
+            array.beginStructure(); array >> ssid >> security >> signal >> active >> device; array.endStructure();
+            m_wifiNetworks.append(QVariantMap{{"ssid", ssid}, {"security", security}, {"signal", signal}, {"active", active}, {"device", device}});
+        }
+        array.endArray();
+    }
+    QDBusInterface firewall(Service, ObjectPath, "org.lyraos.Vega1.Firewall", QDBusConnection::systemBus());
+    const QDBusMessage status = firewall.call(QStringLiteral("Status"));
+    if (status.type() == QDBusMessage::ReplyMessage && status.arguments().size() >= 2) {
+        m_firewallEnabled = status.arguments().at(0).toBool();
+        m_firewallZone = status.arguments().at(1).toString();
+    }
+    emit networkChanged();
 }

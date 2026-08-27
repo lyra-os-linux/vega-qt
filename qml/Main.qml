@@ -227,6 +227,12 @@ Kirigami.ApplicationWindow {
                 visible: window.currentPage === 8
             }
 
+            NetworkPage {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: window.currentPage === 9
+            }
+
             UsersPage {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -236,7 +242,7 @@ Kirigami.ApplicationWindow {
             PlaceholderPage {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: ![0, 1, 4, 8, 11, 12].includes(window.currentPage)
+                visible: ![0, 1, 4, 8, 9, 11, 12].includes(window.currentPage)
                 title: navigationModel.get(window.currentPage).label
                 iconName: navigationModel.get(window.currentPage).iconName
                 description: moduleDescription(window.currentPage)
