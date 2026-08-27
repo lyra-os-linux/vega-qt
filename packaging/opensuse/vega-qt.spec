@@ -1,5 +1,5 @@
 Name:           vega-qt
-Version:        0.1.0
+Version:        0.1.1
 Release:        1%{?dist}
 Summary:        Centro de controle Vega para KDE Plasma
 License:        GPL-3.0-only
@@ -45,5 +45,6 @@ DESTDIR=%{buildroot} cmake --install build
 %doc README.md
 %{_bindir}/vega-qt
 %{_datadir}/applications/org.lyraos.Vega.Qt.desktop
+%{_datadir}/icons/hicolor/scalable/apps/vega.svg
 
 %changelog

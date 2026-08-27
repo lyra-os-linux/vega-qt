@@ -95,13 +95,11 @@ Kirigami.ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.margins: Kirigami.Units.smallSpacing
                     Layout.bottomMargin: Kirigami.Units.largeSpacing
-                    Rectangle {
-                        implicitWidth: 32; implicitHeight: 32; radius: 5
-                        color: window.lyraBlue
-                        Controls.Label {
-                            anchors.centerIn: parent
-                            text: "V"; color: "white"; font.bold: true; font.pixelSize: 17
-                        }
+                    Image {
+                        source: "qrc:/vega.svg"
+                        Layout.preferredWidth: 34; Layout.preferredHeight: 34
+                        sourceSize.width: 68; sourceSize.height: 68
+                        fillMode: Image.PreserveAspectFit
                     }
                     ColumnLayout {
                         spacing: 0

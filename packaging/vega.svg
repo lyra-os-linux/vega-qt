@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Vega">
+  <defs>
+    <linearGradient id="vega-gradient" x1="20" y1="12" x2="108" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="0.52" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="40" fill="url(#vega-gradient)"/>
+  <path fill="#ffffff" d="M64 26l9.6 30.4L104 66l-30.4 9.6L64 106l-9.6-30.4L24 66l30.4-9.6L64 26z"/>
+</svg>

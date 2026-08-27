@@ -45,5 +45,6 @@ DESTDIR=%{buildroot} cmake --install build
 %doc README.md
 %{_bindir}/vega-qt
 %{_datadir}/applications/org.lyraos.Vega.Qt.desktop
+%{_datadir}/icons/hicolor/scalable/apps/vega.svg
 
 %changelog
