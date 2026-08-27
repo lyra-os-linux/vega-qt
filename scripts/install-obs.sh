@@ -21,6 +21,17 @@ else
 fi
 
 zypper --non-interactive --gpg-auto-import-keys refresh "$VEGA_QT_REPO_ALIAS"
+
+if ! zypper --xmlout search --match-exact vega-qt 2>/dev/null \
+  | grep -q '<solvable.*name="vega-qt"'; then
+  echo >&2
+  echo "O repositório foi configurado, mas o pacote vega-qt ainda não está disponível." >&2
+  echo "A primeira publicação pode estar sendo processada pelo OBS. Tente novamente mais tarde:" >&2
+  echo "  sudo zypper refresh vega-obs" >&2
+  echo "  sudo zypper install vega-qt" >&2
+  exit 2
+fi
+
 zypper --non-interactive install vega-qt
 
 echo
