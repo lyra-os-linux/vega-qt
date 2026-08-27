@@ -17,6 +17,7 @@ qt_add_qml_module(vega-qt URI org.lyraos.vega.qt VERSION 1.0 QML_FILES
     qml/pages/StoragePage.qml
     qml/pages/UsersPage.qml
     qml/pages/NetworkPage.qml
+    qml/pages/BluetoothPage.qml
 )
 target_link_libraries(vega-qt PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus KF6::Kirigami)
 install(TARGETS vega-qt RUNTIME DESTINATION bin)

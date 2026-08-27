@@ -45,6 +45,7 @@ SystemBackend::SystemBackend(QObject *parent) : QObject(parent)
     refreshStorage();
     refreshUsers();
     refreshNetwork();
+    refreshBluetooth();
     auto bus = QDBusConnection::systemBus();
     bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Software", "TransactionProgress",
                 this, SLOT(onTransactionProgress(uint,uint,QString)));
@@ -359,4 +360,36 @@ void SystemBackend::refreshNetwork()
         m_firewallZone = status.arguments().at(1).toString();
     }
     emit networkChanged();
+}
+
+void SystemBackend::refreshBluetooth()
+{
+    m_bluetoothStatus.clear();
+    m_bluetoothDevices.clear();
+    QDBusInterface bluetooth(Service, ObjectPath, "org.lyraos.Vega1.Bluetooth", QDBusConnection::systemBus());
+    const QDBusMessage status = bluetooth.call(QStringLiteral("Status"));
+    if (status.type() == QDBusMessage::ReplyMessage && !status.arguments().isEmpty()) {
+        const QDBusArgument data = qvariant_cast<QDBusArgument>(status.arguments().first());
+        bool available, powered, discoverable, pairable, scanning, transferAvailable, receiverActive;
+        QString controller, controllerName, receivePath;
+        data.beginStructure();
+        data >> available >> powered >> discoverable >> pairable >> scanning >> controller
+             >> controllerName >> transferAvailable >> receiverActive >> receivePath;
+        data.endStructure();
+        m_bluetoothStatus = {{"available", available}, {"powered", powered}, {"discoverable", discoverable},
+            {"scanning", scanning}, {"controller", controllerName.isEmpty() ? controller : controllerName}};
+    }
+    const QDBusMessage devices = bluetooth.call(QStringLiteral("ListDevices"));
+    if (devices.type() == QDBusMessage::ReplyMessage && !devices.arguments().isEmpty()) {
+        const QDBusArgument array = qvariant_cast<QDBusArgument>(devices.arguments().first());
+        array.beginArray();
+        while (!array.atEnd()) {
+            QString address, name, alias, icon; bool paired, trusted, connected, blocked; int rssi;
+            array.beginStructure(); array >> address >> name >> alias >> icon >> paired >> trusted >> connected >> blocked >> rssi; array.endStructure();
+            m_bluetoothDevices.append(QVariantMap{{"address", address}, {"name", alias.isEmpty() ? name : alias},
+                {"icon", icon}, {"paired", paired}, {"trusted", trusted}, {"connected", connected}, {"rssi", rssi}});
+        }
+        array.endArray();
+    }
+    emit bluetoothChanged();
 }

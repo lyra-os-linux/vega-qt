@@ -27,6 +27,8 @@ class SystemBackend final : public QObject {
     Q_PROPERTY(QVariantList wifiNetworks READ wifiNetworks NOTIFY networkChanged)
     Q_PROPERTY(bool firewallEnabled READ firewallEnabled NOTIFY networkChanged)
     Q_PROPERTY(QString firewallZone READ firewallZone NOTIFY networkChanged)
+    Q_PROPERTY(QVariantMap bluetoothStatus READ bluetoothStatus NOTIFY bluetoothChanged)
+    Q_PROPERTY(QVariantList bluetoothDevices READ bluetoothDevices NOTIFY bluetoothChanged)
 public:
     explicit SystemBackend(QObject *parent = nullptr);
     bool connected() const { return m_connected; }
@@ -52,6 +54,8 @@ public:
     QVariantList wifiNetworks() const { return m_wifiNetworks; }
     bool firewallEnabled() const { return m_firewallEnabled; }
     QString firewallZone() const { return m_firewallZone; }
+    QVariantMap bluetoothStatus() const { return m_bluetoothStatus; }
+    QVariantList bluetoothDevices() const { return m_bluetoothDevices; }
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void refreshSoftware();
     Q_INVOKABLE void searchSoftware(const QString &query);
@@ -65,6 +69,7 @@ public:
     Q_INVOKABLE void refreshStorage();
     Q_INVOKABLE void refreshUsers();
     Q_INVOKABLE void refreshNetwork();
+    Q_INVOKABLE void refreshBluetooth();
 signals:
     void changed();
     void softwareChanged();
@@ -74,6 +79,7 @@ signals:
     void storageChanged();
     void usersChanged();
     void networkChanged();
+    void bluetoothChanged();
 private:
     bool m_connected = false;
     QString m_status;
@@ -99,6 +105,8 @@ private:
     QVariantList m_wifiNetworks;
     bool m_firewallEnabled = false;
     QString m_firewallZone;
+    QVariantMap m_bluetoothStatus;
+    QVariantList m_bluetoothDevices;
 
 private slots:
     void onTransactionProgress(uint transactionId, uint percent, const QString &message);
