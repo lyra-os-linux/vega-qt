@@ -15,6 +15,7 @@ ColumnLayout {
         GridView {
             cellWidth: Math.max(280, width / 2); cellHeight: 150; model: systemBackend.users
             delegate: Kirigami.AbstractCard {
+                background: Rectangle { color: window.cardColor; radius: 7; border.color: Qt.alpha(window.primaryText, 0.14) }
                 required property var modelData
                 width: GridView.view.cellWidth - 8; height: GridView.view.cellHeight - 8
                 contentItem: RowLayout {
@@ -22,9 +23,9 @@ ColumnLayout {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Controls.Label { text: modelData.fullName || modelData.username; font.bold: true; font.pixelSize: 17 }
-                        Controls.Label { text: modelData.username; color: Kirigami.Theme.disabledTextColor }
-                        Controls.Label { text: modelData.admin ? "Administrador" : "Usuário padrão"; color: modelData.admin ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor }
-                        Controls.Label { Layout.fillWidth: true; text: modelData.groups; elide: Text.ElideRight; color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { text: modelData.username; color: window.secondaryText }
+                        Controls.Label { text: modelData.admin ? "Administrador" : "Usuário padrão"; color: modelData.admin ? Kirigami.Theme.positiveTextColor : window.secondaryText }
+                        Controls.Label { Layout.fillWidth: true; text: modelData.groups; elide: Text.ElideRight; color: window.secondaryText }
                     }
                 }
             }

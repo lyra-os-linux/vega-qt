@@ -16,3 +16,20 @@ cmake --build build
 
 Dependências: `qt6-base-devel`, `qt6-declarative-devel`,
 `kf6-kirigami-devel`, `cmake` e `ninja`.
+
+## Instalação no openSUSE
+
+O pacote `vega-qt` é publicado no mesmo repositório OBS das demais interfaces
+do Vega: `home:rodrigosbrito:vega`. Ele pode coexistir com `vega-gtk` e
+`vega-xfce`.
+
+```sh
+sudo zypper ar -f \
+  https://download.opensuse.org/repositories/home:/rodrigosbrito:/vega/openSUSE_Leap_16.0/ \
+  vega-obs
+sudo zypper --gpg-auto-import-keys refresh vega-obs
+sudo zypper install vega-qt
+```
+
+Esta é uma versão inicial para testes no openSUSE. Operações administrativas
+continuam protegidas pelo Polkit através do `vegad`.

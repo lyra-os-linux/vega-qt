@@ -14,7 +14,7 @@ ColumnLayout {
         ColumnLayout {
             Layout.fillWidth: true; spacing: 0
             Kirigami.Heading { text: "Software"; level: 1 }
-            Controls.Label { text: systemBackend.softwareStatus; color: Kirigami.Theme.disabledTextColor }
+            Controls.Label { text: systemBackend.softwareStatus; color: window.secondaryText }
         }
         Controls.Button { text: "Verificar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshSoftware() }
     }
@@ -67,6 +67,7 @@ ColumnLayout {
             ListView {
                 clip: true; spacing: Kirigami.Units.smallSpacing; model: systemBackend.repositories
                 delegate: Kirigami.AbstractCard {
+                    background: Rectangle { color: window.cardColor; radius: 7; border.color: Qt.alpha(window.primaryText, 0.14) }
                     required property var modelData
                     width: ListView.view.width - 56; x: 28
                     contentItem: RowLayout {
@@ -116,6 +117,7 @@ ColumnLayout {
             anchors.fill: parent; anchors.leftMargin: 28; anchors.rightMargin: 28
             clip: true; spacing: Kirigami.Units.smallSpacing; model: parent.model
             delegate: Kirigami.AbstractCard {
+                background: Rectangle { color: window.cardColor; radius: 7; border.color: Qt.alpha(window.primaryText, 0.14) }
                 required property var modelData
                 width: ListView.view.width
                 contentItem: RowLayout {
@@ -123,9 +125,9 @@ ColumnLayout {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Controls.Label { text: modelData.name || modelData.id; font.bold: true }
-                        Controls.Label { Layout.fillWidth: true; text: modelData.description || modelData.repository || modelData.id; elide: Text.ElideRight; color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { Layout.fillWidth: true; text: modelData.description || modelData.repository || modelData.id; elide: Text.ElideRight; color: window.secondaryText }
                     }
-                    Controls.Label { text: modelData.origin === "flathub" ? "Flatpak" : (modelData.repository || "Oficial"); color: Kirigami.Theme.disabledTextColor }
+                    Controls.Label { text: modelData.origin === "flathub" ? "Flatpak" : (modelData.repository || "Oficial"); color: window.secondaryText }
                     Controls.Button {
                         text: updateMode ? "Atualizar" : (modelData.installed ? "Remover" : "Instalar")
                         icon.name: updateMode ? "system-software-update" : (modelData.installed ? "edit-delete" : "list-add")

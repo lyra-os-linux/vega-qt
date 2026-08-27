@@ -14,7 +14,7 @@ Item {
         spacing: Kirigami.Units.largeSpacing
         Kirigami.Icon { Layout.alignment: Qt.AlignHCenter; source: iconName; implicitWidth: 64; implicitHeight: 64 }
         Kirigami.Heading { Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; text: title; level: 1 }
-        Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: description; color: Kirigami.Theme.disabledTextColor }
+        Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: description; color: window.secondaryText }
         Kirigami.InlineMessage { Layout.fillWidth: true; visible: true; text: "Módulo preparado para a próxima etapa da migração QtDBus." }
         Controls.Button { Layout.alignment: Qt.AlignHCenter; text: "Voltar ao Painel"; icon.name: "go-home"; onClicked: returnRequested() }
     }

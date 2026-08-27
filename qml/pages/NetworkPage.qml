@@ -22,6 +22,7 @@ ColumnLayout {
         ColumnLayout {
             Layout.margins: 28
             Kirigami.AbstractCard {
+                background: Rectangle { color: window.cardColor; radius: 7; border.color: Qt.alpha(window.primaryText, 0.14) }
                 Layout.fillWidth: true
                 contentItem: RowLayout {
                     Kirigami.Icon { source: systemBackend.firewallEnabled ? "security-high" : "security-low"; implicitWidth: 40; implicitHeight: 40 }
@@ -65,6 +66,7 @@ ColumnLayout {
         property bool wifi
         Layout.fillWidth: true; Layout.fillHeight: true; Layout.margins: 28; clip: true; spacing: 6
         delegate: Kirigami.AbstractCard {
+            background: Rectangle { color: window.cardColor; radius: 7; border.color: Qt.alpha(window.primaryText, 0.14) }
             required property var modelData
             width: ListView.view.width
             contentItem: RowLayout {

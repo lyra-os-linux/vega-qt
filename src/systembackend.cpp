@@ -3,6 +3,14 @@
 #include <QDBusInterface>
 #include <QDBusMessage>
 #include <QDBusReply>
+#include <QDateTime>
+#include <QFileInfo>
+#include <QProcess>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QGuiApplication>
+#include <QPalette>
+#include <QStyleHints>
 #include <QVariantMap>
 
 namespace {
@@ -46,11 +54,23 @@ SystemBackend::SystemBackend(QObject *parent) : QObject(parent)
     refreshUsers();
     refreshNetwork();
     refreshBluetooth();
+    refreshMonitor();
+    refreshDateTime();
+    refreshBackup();
+    refreshAppearance();
     auto bus = QDBusConnection::systemBus();
     bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Software", "TransactionProgress",
                 this, SLOT(onTransactionProgress(uint,uint,QString)));
     bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Software", "TransactionFinished",
                 this, SLOT(onTransactionFinished(uint,bool,QString)));
+    bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Backup", "BackupProgress",
+                this, SLOT(onBackupProgress(uint,uint,QString)));
+    bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Backup", "BackupFinished",
+                this, SLOT(onBackupFinished(uint,bool,QString)));
+    bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Backup", "RestoreProgress",
+                this, SLOT(onBackupProgress(uint,uint,QString)));
+    bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Backup", "RestoreFinished",
+                this, SLOT(onBackupFinished(uint,bool,QString)));
 }
 
 void SystemBackend::refresh()
@@ -212,12 +232,14 @@ void SystemBackend::onTransactionFinished(uint transactionId, bool success, cons
     refreshSoftware();
 }
 
-void SystemBackend::refreshServices()
+void SystemBackend::refreshServices(bool all)
 {
     QDBusInterface servicesInterface(Service, ObjectPath, "org.lyraos.Vega1.Services",
                                      QDBusConnection::systemBus());
+    m_showingAllServices = all;
     m_services.clear();
-    const QDBusMessage reply = servicesInterface.call(QStringLiteral("ListServicesLocalized"),
+    const QDBusMessage reply = servicesInterface.call(all ? QStringLiteral("ListAllServicesLocalized")
+                                                          : QStringLiteral("ListServicesLocalized"),
                                                        QStringLiteral("pt_BR"));
     if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(reply.arguments().first());
@@ -392,4 +414,278 @@ void SystemBackend::refreshBluetooth()
         array.endArray();
     }
     emit bluetoothChanged();
+}
+
+void SystemBackend::queryLogs(const QString &unit, const QString &priority, const QString &search)
+{
+    QDBusInterface logs(Service, ObjectPath, "org.lyraos.Vega1.Logs", QDBusConnection::systemBus());
+    const QDBusReply<QStringList> units = logs.call(QStringLiteral("ListUnits"));
+    if (!units.isValid()) {
+        m_logsUnlocked = false;
+        m_logsStatus = tr("A autenticação administrativa foi cancelada ou recusada.");
+        m_logUnits.clear();
+        m_logLines.clear();
+        emit logsChanged();
+        return;
+    }
+    m_logUnits = units.value();
+    const QDBusReply<QStringList> lines = logs.call(QStringLiteral("Query"), unit, priority,
+                                                    QStringLiteral("today"), search, 300u);
+    if (!lines.isValid()) {
+        m_logsUnlocked = false;
+        m_logsStatus = tr("Não foi possível consultar o log administrativo.");
+        m_logLines.clear();
+        emit logsChanged();
+        return;
+    }
+    m_logsUnlocked = true;
+    m_logsStatus = lines.value().isEmpty() ? tr("Nenhuma entrada encontrada para os filtros atuais.") : QString{};
+    m_logLines = lines.value();
+    emit logsChanged();
+}
+
+void SystemBackend::refreshMonitor()
+{
+    m_metrics.clear();
+    m_processes.clear();
+    QDBusInterface monitor(Service, ObjectPath, "org.lyraos.Vega1.Monitor", QDBusConnection::systemBus());
+    const QDBusMessage metricsReply = monitor.call(QStringLiteral("Metrics"));
+    if (metricsReply.type() == QDBusMessage::ReplyMessage && !metricsReply.arguments().isEmpty()) {
+        const QDBusArgument data = qvariant_cast<QDBusArgument>(metricsReply.arguments().first());
+        double cpu = 0, gpu = -1; qulonglong memUsed, memTotal, swapUsed, swapTotal, diskRead, diskWrite, netRx, netTx;
+        QList<double> cores, gpus;
+        data.beginStructure();
+        data >> cpu >> memUsed >> memTotal >> swapUsed >> swapTotal >> diskRead >> diskWrite
+             >> netRx >> netTx >> cores >> gpu >> gpus;
+        data.endStructure();
+        const double memPercent = memTotal ? (100.0 * memUsed / memTotal) : 0;
+        m_metrics = {{"cpu", cpu}, {"memory", memPercent}, {"memUsed", QVariant::fromValue(memUsed)},
+                     {"memTotal", QVariant::fromValue(memTotal)}, {"gpu", gpu},
+                     {"netRx", QVariant::fromValue(netRx)}, {"netTx", QVariant::fromValue(netTx)}};
+    }
+    const QDBusMessage processReply = monitor.call(QStringLiteral("ListProcesses"));
+    if (processReply.type() == QDBusMessage::ReplyMessage && !processReply.arguments().isEmpty()) {
+        const QDBusArgument array = qvariant_cast<QDBusArgument>(processReply.arguments().first());
+        array.beginArray();
+        while (!array.atEnd()) {
+            uint pid, ppid; QString name, user, state; double cpu; qulonglong memory;
+            array.beginStructure(); array >> pid >> ppid >> name >> user >> cpu >> memory >> state; array.endStructure();
+            m_processes.append(QVariantMap{{"pid", pid}, {"name", name}, {"user", user},
+                {"cpu", cpu}, {"memory", QVariant::fromValue(memory)}, {"state", state}});
+        }
+        array.endArray();
+    }
+    emit monitorChanged();
+}
+
+void SystemBackend::refreshDateTime()
+{
+    QDBusInterface dateTime(Service, ObjectPath, "org.lyraos.Vega1.DateTime",
+                            QDBusConnection::systemBus());
+    m_dateTimeStatus.clear();
+    const QDBusMessage status = dateTime.call(QStringLiteral("Status"));
+    if (status.type() == QDBusMessage::ReplyMessage && !status.arguments().isEmpty()) {
+        const QDBusArgument data = qvariant_cast<QDBusArgument>(status.arguments().first());
+        QString timezone, locale, keymap;
+        bool ntp = false;
+        data.beginStructure();
+        data >> timezone >> ntp >> locale >> keymap;
+        data.endStructure();
+        m_dateTimeStatus = {{QStringLiteral("timezone"), timezone},
+                            {QStringLiteral("ntp"), ntp},
+                            {QStringLiteral("locale"), locale},
+                            {QStringLiteral("keymap"), keymap}};
+    }
+    const QDBusReply<QStringList> timezones = dateTime.call(QStringLiteral("ListTimezones"));
+    const QDBusReply<QStringList> locales = dateTime.call(QStringLiteral("ListLocales"));
+    const QDBusReply<QStringList> keymaps = dateTime.call(QStringLiteral("ListKeymaps"));
+    m_timezones = timezones.isValid() ? timezones.value() : QStringList{};
+    m_locales = locales.isValid() ? locales.value() : QStringList{};
+    m_keymaps = keymaps.isValid() ? keymaps.value() : QStringList{};
+    emit dateTimeChanged();
+}
+
+void SystemBackend::applyDateTime(const QString &timezone, bool ntp,
+                                  const QString &locale, const QString &keymap)
+{
+    QDBusInterface dateTime(Service, ObjectPath, "org.lyraos.Vega1.DateTime",
+                            QDBusConnection::systemBus());
+    dateTime.call(QStringLiteral("Apply"), timezone, ntp, locale, keymap);
+    refreshDateTime();
+}
+
+void SystemBackend::refreshBackup(const QString &configId)
+{
+    QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
+    m_backupConfigs.clear();
+    const QDBusMessage configs = backup.call(QStringLiteral("ListConfigs"));
+    if (configs.type() == QDBusMessage::ReplyMessage && !configs.arguments().isEmpty()) {
+        const QDBusArgument array = qvariant_cast<QDBusArgument>(configs.arguments().first());
+        array.beginArray();
+        while (!array.atEnd()) {
+            QString id, destination, uuid, frequency;
+            QStringList paths;
+            array.beginStructure(); array >> id >> paths >> destination >> uuid >> frequency; array.endStructure();
+            m_backupConfigs.append(QVariantMap{{"id", id}, {"paths", paths.join(", ")},
+                {"destination", destination}, {"uuid", uuid}, {"frequency", frequency}});
+        }
+        array.endArray();
+    }
+    if (!configId.isEmpty())
+        m_backupConfigId = configId;
+    if (m_backupConfigId.isEmpty() && !m_backupConfigs.isEmpty())
+        m_backupConfigId = m_backupConfigs.first().toMap().value("id").toString();
+    m_backupSnapshots.clear();
+    if (!m_backupConfigId.isEmpty()) {
+        const QDBusMessage snapshots = backup.call(QStringLiteral("ListSnapshots"), m_backupConfigId);
+        if (snapshots.type() == QDBusMessage::ReplyMessage && !snapshots.arguments().isEmpty()) {
+            const QDBusArgument array = qvariant_cast<QDBusArgument>(snapshots.arguments().first());
+            array.beginArray();
+            while (!array.atEnd()) {
+                QString id; qlonglong timestamp = 0; qulonglong files = 0, bytes = 0;
+                array.beginStructure(); array >> id >> timestamp >> files >> bytes; array.endStructure();
+                m_backupSnapshots.append(QVariantMap{{"id", id},
+                    {"date", QDateTime::fromSecsSinceEpoch(timestamp).toLocalTime().toString("dd/MM/yyyy HH:mm")},
+                    {"files", files}, {"bytes", bytes}});
+            }
+            array.endArray();
+        }
+    }
+    emit backupChanged();
+}
+
+void SystemBackend::createBackupConfig(const QString &id, const QString &paths,
+                                       const QString &destination, const QString &destinationUuid,
+                                       const QString &frequency)
+{
+    QStringList pathList;
+    for (const QString &path : paths.split(',', Qt::SkipEmptyParts))
+        pathList.append(path.trimmed());
+    QDBusArgument config;
+    config.beginStructure();
+    config << id.trimmed() << pathList << destination.trimmed() << destinationUuid.trimmed() << frequency;
+    config.endStructure();
+    QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
+    const QDBusMessage reply = backup.call(QStringLiteral("CreateConfig"), QVariant::fromValue(config));
+    m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
+        ? tr("Configuração de backup criada.") : tr("Não foi possível criar a configuração.");
+    refreshBackup();
+}
+
+void SystemBackend::deleteBackupConfig(const QString &id)
+{
+    QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
+    const QDBusMessage reply = backup.call(QStringLiteral("DeleteConfig"), id);
+    if (reply.type() == QDBusMessage::ReplyMessage) {
+        m_backupConfigId.clear();
+        m_backupStatus = tr("Configuração removida.");
+    } else {
+        m_backupStatus = tr("Não foi possível remover a configuração.");
+    }
+    refreshBackup();
+}
+
+void SystemBackend::runBackup(const QString &id)
+{
+    QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
+    const QDBusMessage reply = backup.call(QStringLiteral("RunBackupNow"), id);
+    m_backupProgress = 0;
+    m_backupStatus = reply.type() == QDBusMessage::ReplyMessage ? tr("Backup iniciado.") : tr("Não foi possível iniciar o backup.");
+    emit backupChanged();
+}
+
+void SystemBackend::restoreBackup(const QString &snapshotId, const QString &targetPath)
+{
+    QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
+    const QDBusMessage reply = backup.call(QStringLiteral("RestoreSnapshot"), snapshotId,
+                                           targetPath.trimmed(), QStringLiteral("separate-folder"));
+    m_backupProgress = 0;
+    m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
+        ? tr("Restauração iniciada em uma pasta separada.") : tr("Não foi possível iniciar a restauração.");
+    emit backupChanged();
+}
+
+void SystemBackend::onBackupProgress(uint, uint percent, const QString &message)
+{
+    m_backupProgress = static_cast<int>(percent);
+    m_backupStatus = message;
+    emit backupChanged();
+}
+
+void SystemBackend::onBackupFinished(uint, bool success, const QString &message)
+{
+    m_backupProgress = success ? 100 : 0;
+    m_backupStatus = message;
+    emit backupChanged();
+    refreshBackup(m_backupConfigId);
+}
+
+void SystemBackend::refreshAppearance()
+{
+    const QString configPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+        + QStringLiteral("/kdeglobals");
+    QSettings settings(configPath, QSettings::IniFormat);
+    settings.beginGroup(QStringLiteral("KDE"));
+    const QString widgetStyle = settings.value(QStringLiteral("widgetStyle"), tr("Padrão do Plasma")).toString();
+    settings.endGroup();
+    settings.beginGroup(QStringLiteral("General"));
+    const QString colorScheme = settings.value(QStringLiteral("ColorScheme"), tr("Padrão do Plasma")).toString();
+    const QString font = settings.value(QStringLiteral("font"), tr("Fonte do sistema")).toString().section(',', 0, 0);
+    settings.endGroup();
+    settings.beginGroup(QStringLiteral("Icons"));
+    const QString icons = settings.value(QStringLiteral("Theme"), tr("Padrão do Plasma")).toString();
+    settings.endGroup();
+    m_appearance = {{QStringLiteral("style"), widgetStyle},
+                    {QStringLiteral("colors"), colorScheme},
+                    {QStringLiteral("icons"), icons},
+                    {QStringLiteral("font"), font}};
+    emit appearanceChanged();
+}
+
+void SystemBackend::openAppearanceModule(const QString &module)
+{
+    const QString executable = QStandardPaths::findExecutable(QStringLiteral("kcmshell6"));
+    if (executable.isEmpty()) {
+        m_appearanceStatus = tr("As Configurações do Sistema do Plasma não estão instaladas nesta sessão.");
+        emit appearanceChanged();
+        return;
+    }
+    const bool started = QProcess::startDetached(executable, {module});
+    m_appearanceStatus = started ? QString{} : tr("Não foi possível abrir este módulo do Plasma.");
+    emit appearanceChanged();
+}
+
+void SystemBackend::setDarkTheme(bool enabled)
+{
+    QPalette palette;
+    const QColor window = enabled ? QColor("#191c20") : QColor("#f6f7f9");
+    const QColor base = enabled ? QColor("#23272d") : QColor("#ffffff");
+    const QColor alternate = enabled ? QColor("#20242a") : QColor("#eef1f5");
+    const QColor text = enabled ? QColor("#f1f3f5") : QColor("#20242a");
+    const QColor disabled = enabled ? QColor("#7f8995") : QColor("#87919d");
+    const QColor border = enabled ? QColor("#3b424b") : QColor("#cdd3da");
+
+    palette.setColor(QPalette::Window, window);
+    palette.setColor(QPalette::WindowText, text);
+    palette.setColor(QPalette::Base, base);
+    palette.setColor(QPalette::AlternateBase, alternate);
+    palette.setColor(QPalette::Text, text);
+    palette.setColor(QPalette::Button, base);
+    palette.setColor(QPalette::ButtonText, text);
+    palette.setColor(QPalette::ToolTipBase, base);
+    palette.setColor(QPalette::ToolTipText, text);
+    palette.setColor(QPalette::Highlight, QColor("#2777c7"));
+    palette.setColor(QPalette::HighlightedText, Qt::white);
+    palette.setColor(QPalette::PlaceholderText, disabled);
+    palette.setColor(QPalette::Light, enabled ? QColor("#454d58") : Qt::white);
+    palette.setColor(QPalette::Midlight, border);
+    palette.setColor(QPalette::Mid, border);
+    palette.setColor(QPalette::Dark, enabled ? QColor("#111316") : QColor("#aeb6c0"));
+    palette.setColor(QPalette::Shadow, enabled ? Qt::black : QColor("#68717c"));
+    palette.setColor(QPalette::Disabled, QPalette::WindowText, disabled);
+    palette.setColor(QPalette::Disabled, QPalette::Text, disabled);
+    palette.setColor(QPalette::Disabled, QPalette::ButtonText, disabled);
+    QGuiApplication::setPalette(palette);
+    if (QGuiApplication::styleHints())
+        QGuiApplication::styleHints()->setColorScheme(enabled ? Qt::ColorScheme::Dark : Qt::ColorScheme::Light);
 }

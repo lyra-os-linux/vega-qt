@@ -14,6 +14,7 @@ ColumnLayout {
         ListView {
             clip: true; spacing: Kirigami.Units.smallSpacing; model: systemBackend.volumes
             delegate: Kirigami.AbstractCard {
+                background: Rectangle { color: window.cardColor; radius: 7; border.color: Qt.alpha(window.primaryText, 0.14) }
                 required property var modelData
                 width: ListView.view.width
                 contentItem: RowLayout {
@@ -21,12 +22,12 @@ ColumnLayout {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Controls.Label { text: modelData.name || modelData.path; font.bold: true }
-                        Controls.Label { text: (modelData.model || modelData.fsType) + "  •  " + (modelData.mountpoint || "Não montado"); color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { text: (modelData.model || modelData.fsType) + "  •  " + (modelData.mountpoint || "Não montado"); color: window.secondaryText }
                         Controls.ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: modelData.percent }
                     }
                     ColumnLayout {
                         Controls.Label { text: modelData.percent + "%"; font.bold: true }
-                        Controls.Label { text: modelData.used + " / " + modelData.size; color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { text: modelData.used + " / " + modelData.size; color: window.secondaryText }
                     }
                 }
             }

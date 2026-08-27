@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
+import QtCore as Core
 import org.kde.kirigami as Kirigami
 import "pages"
 
@@ -14,25 +15,65 @@ Kirigami.ApplicationWindow {
     title: "Vega — KDE"
 
     readonly property color lyraBlue: "#2777c7"
+    readonly property bool darkMode: forceDarkTheme || appSettings.darkMode
+    readonly property color pageColor: darkMode ? "#191c20" : "#f6f7f9"
+    readonly property color cardColor: darkMode ? "#23272d" : "#ffffff"
+    readonly property color alternateColor: darkMode ? "#20242a" : "#eef1f5"
+    readonly property color primaryText: darkMode ? "#f1f3f5" : "#20242a"
+    readonly property color secondaryText: darkMode ? "#aeb6c0" : "#66717e"
     property int currentPage: 0
     property string searchText: ""
 
+    color: pageColor
+    palette.window: pageColor
+    palette.windowText: primaryText
+    palette.base: cardColor
+    palette.alternateBase: alternateColor
+    palette.text: primaryText
+    palette.button: cardColor
+    palette.buttonText: primaryText
+    palette.highlight: lyraBlue
+    palette.highlightedText: "#ffffff"
+    palette.placeholderText: secondaryText
+    Kirigami.Theme.inherit: false
+    Kirigami.Theme.backgroundColor: pageColor
+    Kirigami.Theme.alternateBackgroundColor: alternateColor
+    Kirigami.Theme.textColor: primaryText
+    Kirigami.Theme.disabledTextColor: secondaryText
+    Kirigami.Theme.highlightColor: lyraBlue
+    Kirigami.Theme.highlightedTextColor: "#ffffff"
+    Kirigami.Theme.positiveTextColor: darkMode ? "#5bd68a" : "#168447"
+    Kirigami.Theme.neutralTextColor: darkMode ? "#f3bd59" : "#9a6500"
+    Kirigami.Theme.negativeTextColor: darkMode ? "#ff7a85" : "#c52c3a"
+
+    Core.Settings {
+        id: appSettings
+        category: "appearance"
+        property bool darkMode: false
+    }
+
+    Component.onCompleted: {
+        if (forceDarkTheme)
+            appSettings.darkMode = true
+        systemBackend.setDarkTheme(window.darkMode)
+    }
+
     ListModel {
         id: navigationModel
-        ListElement { label: "Painel"; section: "Principal"; iconName: "view-dashboard" }
+        ListElement { label: "Painel"; section: "Principal"; iconName: "preferences-system" }
         ListElement { label: "Software"; section: "Principal"; iconName: "system-software-install" }
         ListElement { label: "Backup"; section: "Principal"; iconName: "document-save" }
         ListElement { label: "Assistente de IA"; section: "Principal"; iconName: "system-search" }
         ListElement { label: "Hardware e Kernel"; section: "Sistema"; iconName: "computer" }
         ListElement { label: "Data, Hora e Idioma"; section: "Sistema"; iconName: "preferences-system-time" }
-        ListElement { label: "Personalização"; section: "Sistema"; iconName: "preferences-desktop-theme" }
+        ListElement { label: "Personalização"; section: "Sistema"; iconName: "preferences-desktop" }
         ListElement { label: "Monitor do Sistema"; section: "Sistema"; iconName: "utilities-system-monitor" }
         ListElement { label: "Armazenamento"; section: "Sistema"; iconName: "drive-harddisk" }
         ListElement { label: "Rede e Firewall"; section: "Sistema"; iconName: "network-wireless" }
-        ListElement { label: "Bluetooth"; section: "Sistema"; iconName: "preferences-system-bluetooth" }
+        ListElement { label: "Bluetooth"; section: "Sistema"; iconName: "bluetooth" }
         ListElement { label: "Serviços"; section: "Sistema"; iconName: "system-run" }
         ListElement { label: "Usuários"; section: "Sistema"; iconName: "system-users" }
-        ListElement { label: "Log do Sistema"; section: "Sistema"; iconName: "view-list-text" }
+        ListElement { label: "Log do Sistema"; section: "Sistema"; iconName: "logviewer" }
     }
 
     RowLayout {
@@ -42,7 +83,7 @@ Kirigami.ApplicationWindow {
         Rectangle {
             Layout.preferredWidth: 242
             Layout.fillHeight: true
-            color: Kirigami.Theme.alternateBackgroundColor
+            color: window.alternateColor
             border.color: Qt.alpha(Kirigami.Theme.textColor, 0.13)
 
             ColumnLayout {
@@ -64,8 +105,8 @@ Kirigami.ApplicationWindow {
                     }
                     ColumnLayout {
                         spacing: 0
-                        Controls.Label { text: "Vega"; font.bold: true; font.pixelSize: 18 }
-                        Controls.Label { text: "LYRA KDE"; font.pixelSize: 10; color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { text: "Vega"; font.bold: true; font.pixelSize: 18; color: window.primaryText }
+                        Controls.Label { text: "LYRA KDE"; font.pixelSize: 10; color: window.secondaryText }
                     }
                     Item { Layout.fillWidth: true }
                 }
@@ -73,6 +114,8 @@ Kirigami.ApplicationWindow {
                 Controls.TextField {
                     Layout.fillWidth: true
                     placeholderText: "Buscar configuração…"
+                    color: window.primaryText
+                    placeholderTextColor: window.secondaryText
                     leftPadding: 34
                     onTextChanged: window.searchText = text.toLowerCase()
                     Kirigami.Icon {
@@ -104,7 +147,7 @@ Kirigami.ApplicationWindow {
                                 visible: index === 0 || navigationModel.get(index - 1).section !== section
                                 text: section.toUpperCase()
                                 font.pixelSize: 10; font.bold: true
-                                color: Kirigami.Theme.disabledTextColor
+                                color: window.secondaryText
                                 Layout.leftMargin: 12; Layout.topMargin: 12; Layout.bottomMargin: 3
                             }
                             Controls.ItemDelegate {
@@ -115,11 +158,11 @@ Kirigami.ApplicationWindow {
                                 contentItem: RowLayout {
                                     Kirigami.Icon {
                                         source: iconName; implicitWidth: 19; implicitHeight: 19
-                                        color: window.currentPage === index ? "white" : Kirigami.Theme.textColor
+                                        color: window.currentPage === index ? "white" : window.primaryText
                                     }
                                     Controls.Label {
                                         Layout.fillWidth: true; text: label; elide: Text.ElideRight
-                                        color: window.currentPage === index ? "white" : Kirigami.Theme.textColor
+                                        color: window.currentPage === index ? "white" : window.primaryText
                                         font.bold: window.currentPage === index
                                     }
                                 }
@@ -142,6 +185,10 @@ Kirigami.ApplicationWindow {
 
             Controls.ToolBar {
                 Layout.fillWidth: true
+                background: Rectangle {
+                    color: window.cardColor
+                    border.color: Qt.alpha(window.primaryText, 0.12)
+                }
                 contentItem: RowLayout {
                     Kirigami.Heading {
                         Layout.leftMargin: Kirigami.Units.largeSpacing
@@ -153,7 +200,17 @@ Kirigami.ApplicationWindow {
                         icon.name: "view-refresh"; text: "Atualizar"; display: Controls.AbstractButton.IconOnly
                         onClicked: systemBackend.refresh()
                     }
-                    Controls.ToolButton { icon.name: "application-menu"; display: Controls.AbstractButton.IconOnly }
+                    Controls.ToolButton {
+                        icon.name: window.darkMode ? "weather-clear" : "weather-clear-night"
+                        text: window.darkMode ? "Usar tema claro" : "Usar tema escuro"
+                        display: Controls.AbstractButton.IconOnly
+                        onClicked: {
+                            appSettings.darkMode = !window.darkMode
+                            systemBackend.setDarkTheme(appSettings.darkMode)
+                        }
+                        Controls.ToolTip.visible: hovered
+                        Controls.ToolTip.text: text
+                    }
                 }
             }
 
@@ -169,7 +226,7 @@ Kirigami.ApplicationWindow {
                     Controls.Label {
                         Layout.leftMargin: 28
                         text: "Administração do LyraOS integrada ao Plasma"
-                        color: Kirigami.Theme.disabledTextColor
+                        color: window.secondaryText
                     }
                     Rectangle {
                         Layout.fillWidth: true; Layout.margins: 28; Layout.bottomMargin: 0
@@ -184,7 +241,7 @@ Kirigami.ApplicationWindow {
                                 Controls.Label { text: systemBackend.status; font.bold: true }
                                 Controls.Label {
                                     text: systemBackend.connected ? "vegad " + systemBackend.version : "Instale ou inicie o serviço vegad"
-                                    color: Kirigami.Theme.disabledTextColor
+                                    color: window.secondaryText
                                 }
                             }
                         }
@@ -244,11 +301,17 @@ Kirigami.ApplicationWindow {
                 Layout.fillHeight: true
                 visible: window.currentPage === 12
             }
+            MonitorPage { Layout.fillWidth: true; Layout.fillHeight: true; visible: window.currentPage === 7 }
+            LogsPage { Layout.fillWidth: true; Layout.fillHeight: true; visible: window.currentPage === 13 }
+            DateTimePage { Layout.fillWidth: true; Layout.fillHeight: true; visible: window.currentPage === 5 }
+            BackupPage { Layout.fillWidth: true; Layout.fillHeight: true; visible: window.currentPage === 2 }
+            PersonalizationPage { Layout.fillWidth: true; Layout.fillHeight: true; visible: window.currentPage === 6 }
+            AssistantPage { Layout.fillWidth: true; Layout.fillHeight: true; visible: window.currentPage === 3 }
 
             PlaceholderPage {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: ![0, 1, 4, 8, 9, 10, 11, 12].includes(window.currentPage)
+                visible: ![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(window.currentPage)
                 title: navigationModel.get(window.currentPage).label
                 iconName: navigationModel.get(window.currentPage).iconName
                 description: moduleDescription(window.currentPage)
@@ -278,6 +341,7 @@ Kirigami.ApplicationWindow {
     }
 
     component DashboardCard: Kirigami.AbstractCard {
+        background: Rectangle { color: window.cardColor; radius: 7; border.color: Qt.alpha(window.primaryText, 0.14) }
         required property string title
         required property string value
         property string detail: ""
@@ -288,9 +352,9 @@ Kirigami.ApplicationWindow {
             Kirigami.Icon { source: iconName; implicitWidth: 38; implicitHeight: 38 }
             ColumnLayout {
                 Layout.fillWidth: true
-                Controls.Label { text: title; color: Kirigami.Theme.disabledTextColor }
+                Controls.Label { text: title; color: window.secondaryText }
                 Controls.Label { Layout.fillWidth: true; text: value; font.pixelSize: 17; font.bold: true; elide: Text.ElideRight }
-                Controls.Label { visible: detail.length > 0; text: detail; color: Kirigami.Theme.disabledTextColor }
+                Controls.Label { visible: detail.length > 0; text: detail; color: window.secondaryText }
             }
         }
     }
