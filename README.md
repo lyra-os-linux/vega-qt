@@ -31,5 +31,14 @@ sudo zypper --gpg-auto-import-keys refresh vega-obs
 sudo zypper install vega-qt
 ```
 
+Também é possível usar o instalador do repositório:
+
+```sh
+sudo bash scripts/install-obs.sh
+```
+
 Esta é uma versão inicial para testes no openSUSE. Operações administrativas
 continuam protegidas pelo Polkit através do `vegad`.
+
+Consulte [docs/testando.md](docs/testando.md) para o roteiro de validação e
+para saber quais informações incluir ao abrir um relato.

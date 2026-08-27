@@ -1,5 +1,5 @@
 Name:           vega-qt
-Version:        0.1.1
+Version:        0.1.2
 Release:        1%{?dist}
 Summary:        Centro de controle Vega para KDE Plasma
 License:        GPL-3.0-only
