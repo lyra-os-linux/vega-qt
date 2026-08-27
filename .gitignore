@@ -1,39 +1,16 @@
-# Node / Electron
-node_modules/
-out/
-dist/
-dist-electron/
-release/
-!docs/release/
-!docs/release/**
-*.log
-npm-debug.log*
-*.tsbuildinfo
-vega/.tsbuild/
-
-# Claude Code local settings
-.claude/settings.local.json
-
-# Go
-vegad/vegad
-vegad/bin/
-*.exe
-
-# Rust
-/target/
-po/locale/
-
-# RPM packaging (openSUSE)
-*.rpm
-dist-test/
+# Qt / CMake
 /build/
+/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+*.user
+*.qmlc
+*.jsc
+
+# Packages
+*.rpm
 
 # Editors / OS
 .DS_Store
 .vscode/
 *.swp
-
-# Env
-.env
-.env.local
-.claude/settings.json
