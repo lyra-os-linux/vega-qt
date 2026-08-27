@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "pages"
 
 Kirigami.ApplicationWindow {
     id: window
@@ -159,6 +160,7 @@ Kirigami.ApplicationWindow {
             Controls.ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                visible: window.currentPage === 0
                 contentWidth: availableWidth
                 ColumnLayout {
                     width: parent.width
@@ -200,7 +202,67 @@ Kirigami.ApplicationWindow {
                     }
                 }
             }
+
+            SoftwarePage {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: window.currentPage === 1
+            }
+
+            ServicesPage {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: window.currentPage === 11
+            }
+
+            HardwarePage {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: window.currentPage === 4
+            }
+
+            StoragePage {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: window.currentPage === 8
+            }
+
+            UsersPage {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: window.currentPage === 12
+            }
+
+            PlaceholderPage {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: ![0, 1, 4, 8, 11, 12].includes(window.currentPage)
+                title: navigationModel.get(window.currentPage).label
+                iconName: navigationModel.get(window.currentPage).iconName
+                description: moduleDescription(window.currentPage)
+                onReturnRequested: window.currentPage = 0
+            }
         }
+    }
+
+    function moduleDescription(page) {
+        const descriptions = [
+            "Visão geral do sistema",
+            "Aplicativos, pacotes, repositórios e atualizações do sistema.",
+            "Backups e pontos de restauração protegidos pelo vegad.",
+            "Assistência contextual para administração do LyraOS.",
+            "Inventário de hardware, drivers, firmware e kernels instalados.",
+            "Fuso horário, sincronização, idioma e formatos regionais.",
+            "Aparência, temas, ícones, wallpapers e comportamento do Plasma.",
+            "Uso de CPU, memória, processos e saúde do sistema.",
+            "Discos, partições, volumes e sistemas de arquivos.",
+            "Conexões, Wi-Fi, VPN, proxy e regras de firewall.",
+            "Adaptadores e dispositivos Bluetooth.",
+            "Serviços systemd e seu estado operacional.",
+            "Contas locais, grupos e permissões.",
+            "Eventos e diagnóstico do journal do sistema."
+        ]
+        return descriptions[page] || "Configuração do sistema"
     }
 
     component DashboardCard: Kirigami.AbstractCard {
