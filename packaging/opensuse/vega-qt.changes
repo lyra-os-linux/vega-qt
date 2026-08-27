@@ -1,0 +1,6 @@
+-------------------------------------------------------------------
+Thu Aug 27 2026 - Rodrigo Brito <rodrigo@lyraos.com.br>
+
+- Add the hicolor icon build dependency for OBS directory ownership.
+- Remove the non-system runtime path from the installed executable.
+- Complete the openSUSE package metadata.

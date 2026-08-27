@@ -19,7 +19,6 @@ Requires:       vegad
 Requires:       secret-tool
 Requires:       qt6-declarative-imports
 Requires:       kf6-kirigami-imports
-Requires:       hicolor-icon-theme
 Recommends:     restic
 Recommends:     systemsettings6
 

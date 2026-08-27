@@ -1,5 +1,5 @@
 Name:           vega-qt
-Version:        0.1.3
+Version:        0.1.4
 Release:        1%{?dist}
 Summary:        Centro de controle Vega para KDE Plasma
 License:        GPL-3.0-only
@@ -19,7 +19,6 @@ Requires:       vegad
 Requires:       secret-tool
 Requires:       qt6-declarative-imports
 Requires:       kf6-kirigami-imports
-Requires:       hicolor-icon-theme
 Recommends:     restic
 Recommends:     systemsettings6
 
