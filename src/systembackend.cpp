@@ -9,6 +9,31 @@ namespace {
 constexpr auto Service = "org.lyraos.Vega1";
 constexpr auto ObjectPath = "/org/lyraos/Vega1";
 constexpr auto Interface = "org.lyraos.Vega1.System";
+
+QVariantList packageList(const QDBusMessage &reply)
+{
+    QVariantList packages;
+    if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty())
+        return packages;
+    const QDBusArgument array = qvariant_cast<QDBusArgument>(reply.arguments().first());
+    array.beginArray();
+    while (!array.atEnd()) {
+        QString origin, id, name, description, icon, repository;
+        bool installed = false;
+        array.beginStructure();
+        array >> origin >> id >> name >> description >> installed >> icon >> repository;
+        array.endStructure();
+        packages.append(QVariantMap{{QStringLiteral("origin"), origin},
+                                    {QStringLiteral("id"), id},
+                                    {QStringLiteral("name"), name},
+                                    {QStringLiteral("description"), description},
+                                    {QStringLiteral("installed"), installed},
+                                    {QStringLiteral("icon"), icon},
+                                    {QStringLiteral("repository"), repository}});
+    }
+    array.endArray();
+    return packages;
+}
 }
 
 SystemBackend::SystemBackend(QObject *parent) : QObject(parent)
@@ -19,6 +44,11 @@ SystemBackend::SystemBackend(QObject *parent) : QObject(parent)
     refreshHardware();
     refreshStorage();
     refreshUsers();
+    auto bus = QDBusConnection::systemBus();
+    bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Software", "TransactionProgress",
+                this, SLOT(onTransactionProgress(uint,uint,QString)));
+    bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Software", "TransactionFinished",
+                this, SLOT(onTransactionFinished(uint,bool,QString)));
 }
 
 void SystemBackend::refresh()
@@ -64,26 +94,120 @@ void SystemBackend::refreshSoftware()
     }
     const QDBusReply<QString> manager = software.call(QStringLiteral("PackageManagerName"));
     m_packageManager = manager.isValid() ? manager.value() : tr("Zypper");
-    const QDBusMessage reply = software.call(QStringLiteral("ListNativeUpdates"));
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-        const QDBusArgument array = qvariant_cast<QDBusArgument>(reply.arguments().first());
-        int count = 0;
+    m_softwareUpdates = packageList(software.call(QStringLiteral("ListUpdates")));
+    if (!m_softwareUpdates.isEmpty()) {
+        m_softwareStatus = tr("%1 atualização(ões) disponível(is)").arg(m_softwareUpdates.size());
+    } else {
+        const QDBusMessage native = software.call(QStringLiteral("ListNativeUpdates"));
+        if (native.type() == QDBusMessage::ReplyMessage) {
+            m_softwareUpdates = packageList(native);
+            m_softwareStatus = m_softwareUpdates.isEmpty() ? tr("Sistema atualizado")
+                : tr("%1 atualização(ões) disponível(is)").arg(m_softwareUpdates.size());
+        } else {
+        m_softwareStatus = tr("Não foi possível consultar atualizações.");
+        }
+    }
+    m_repositories.clear();
+    const QDBusMessage repos = software.call(QStringLiteral("ListRepos"));
+    if (repos.type() == QDBusMessage::ReplyMessage && !repos.arguments().isEmpty()) {
+        const QDBusArgument array = qvariant_cast<QDBusArgument>(repos.arguments().first());
         array.beginArray();
         while (!array.atEnd()) {
-            QString origin, id, name, description, icon, repository;
-            bool installed = false;
+            QString name;
+            bool enabled = false;
             array.beginStructure();
-            array >> origin >> id >> name >> description >> installed >> icon >> repository;
+            array >> name >> enabled;
             array.endStructure();
-            ++count;
+            m_repositories.append(QVariantMap{{QStringLiteral("name"), name},
+                                               {QStringLiteral("enabled"), enabled}});
         }
         array.endArray();
-        m_softwareStatus = count == 0 ? tr("Sistema atualizado")
-                                      : tr("%1 atualização(ões) disponível(is)").arg(count);
-    } else {
-        m_softwareStatus = tr("Não foi possível consultar atualizações.");
     }
     emit softwareChanged();
+}
+
+void SystemBackend::searchSoftware(const QString &query)
+{
+    if (query.trimmed().size() < 2)
+        return;
+    m_softwareBusy = true;
+    emit softwareChanged();
+    QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software",
+                            QDBusConnection::systemBus());
+    m_softwareResults = packageList(software.call(QStringLiteral("Search"), query.trimmed()));
+    if (m_softwareResults.isEmpty())
+        m_softwareResults = packageList(software.call(QStringLiteral("SearchNative"), query.trimmed()));
+    m_softwareBusy = false;
+    emit softwareChanged();
+}
+
+static uint startSoftwareTransaction(const QString &method, const QVariantList &arguments)
+{
+    QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software",
+                            QDBusConnection::systemBus());
+    const QDBusMessage reply = software.callWithArgumentList(QDBus::Block, method, arguments);
+    return reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
+        ? reply.arguments().first().toUInt() : 0;
+}
+
+void SystemBackend::installPackage(const QString &origin, const QString &id)
+{
+    m_transactionId = startSoftwareTransaction(QStringLiteral("Install"), {origin, id});
+    m_transactionProgress = 0;
+    m_transactionMessage = m_transactionId ? tr("Instalação iniciada") : tr("Não foi possível iniciar a instalação");
+    emit transactionChanged();
+}
+
+void SystemBackend::removePackage(const QString &origin, const QString &id)
+{
+    m_transactionId = startSoftwareTransaction(QStringLiteral("Remove"), {origin, id});
+    m_transactionProgress = 0;
+    m_transactionMessage = m_transactionId ? tr("Remoção iniciada") : tr("Não foi possível iniciar a remoção");
+    emit transactionChanged();
+}
+
+void SystemBackend::updateAll()
+{
+    m_transactionId = startSoftwareTransaction(QStringLiteral("UpdateAll"), {});
+    m_transactionProgress = 0;
+    m_transactionMessage = m_transactionId ? tr("Atualização iniciada") : tr("Não foi possível iniciar a atualização");
+    emit transactionChanged();
+}
+
+void SystemBackend::updatePackage(const QString &origin, const QString &id)
+{
+    m_transactionId = startSoftwareTransaction(QStringLiteral("UpdatePackage"), {origin, id});
+    m_transactionProgress = 0;
+    m_transactionMessage = m_transactionId ? tr("Atualização iniciada") : tr("Não foi possível iniciar a atualização");
+    emit transactionChanged();
+}
+
+void SystemBackend::setRepositoryEnabled(const QString &name, bool enabled)
+{
+    QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software",
+                            QDBusConnection::systemBus());
+    software.call(QStringLiteral("SetRepoEnabled"), name, enabled);
+    refreshSoftware();
+}
+
+void SystemBackend::onTransactionProgress(uint transactionId, uint percent, const QString &message)
+{
+    if (transactionId != m_transactionId)
+        return;
+    m_transactionProgress = static_cast<int>(percent);
+    m_transactionMessage = message;
+    emit transactionChanged();
+}
+
+void SystemBackend::onTransactionFinished(uint transactionId, bool success, const QString &message)
+{
+    if (transactionId != m_transactionId)
+        return;
+    m_transactionProgress = success ? 100 : 0;
+    m_transactionMessage = message;
+    m_transactionId = 0;
+    emit transactionChanged();
+    refreshSoftware();
 }
 
 void SystemBackend::refreshServices()

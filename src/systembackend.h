@@ -12,6 +12,12 @@ class SystemBackend final : public QObject {
     Q_PROPERTY(int diskPercent READ diskPercent NOTIFY changed)
     Q_PROPERTY(QString packageManager READ packageManager NOTIFY softwareChanged)
     Q_PROPERTY(QString softwareStatus READ softwareStatus NOTIFY softwareChanged)
+    Q_PROPERTY(QVariantList softwareResults READ softwareResults NOTIFY softwareChanged)
+    Q_PROPERTY(QVariantList softwareUpdates READ softwareUpdates NOTIFY softwareChanged)
+    Q_PROPERTY(QVariantList repositories READ repositories NOTIFY softwareChanged)
+    Q_PROPERTY(bool softwareBusy READ softwareBusy NOTIFY softwareChanged)
+    Q_PROPERTY(int transactionProgress READ transactionProgress NOTIFY transactionChanged)
+    Q_PROPERTY(QString transactionMessage READ transactionMessage NOTIFY transactionChanged)
     Q_PROPERTY(QVariantList services READ services NOTIFY servicesChanged)
     Q_PROPERTY(QVariantMap hardware READ hardware NOTIFY hardwareChanged)
     Q_PROPERTY(QStringList kernels READ kernels NOTIFY hardwareChanged)
@@ -27,6 +33,12 @@ public:
     int diskPercent() const { return m_diskPercent; }
     QString packageManager() const { return m_packageManager; }
     QString softwareStatus() const { return m_softwareStatus; }
+    QVariantList softwareResults() const { return m_softwareResults; }
+    QVariantList softwareUpdates() const { return m_softwareUpdates; }
+    QVariantList repositories() const { return m_repositories; }
+    bool softwareBusy() const { return m_softwareBusy; }
+    int transactionProgress() const { return m_transactionProgress; }
+    QString transactionMessage() const { return m_transactionMessage; }
     QVariantList services() const { return m_services; }
     QVariantMap hardware() const { return m_hardware; }
     QStringList kernels() const { return m_kernels; }
@@ -34,6 +46,12 @@ public:
     QVariantList users() const { return m_users; }
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void refreshSoftware();
+    Q_INVOKABLE void searchSoftware(const QString &query);
+    Q_INVOKABLE void installPackage(const QString &origin, const QString &id);
+    Q_INVOKABLE void removePackage(const QString &origin, const QString &id);
+    Q_INVOKABLE void updateAll();
+    Q_INVOKABLE void updatePackage(const QString &origin, const QString &id);
+    Q_INVOKABLE void setRepositoryEnabled(const QString &name, bool enabled);
     Q_INVOKABLE void refreshServices();
     Q_INVOKABLE void refreshHardware();
     Q_INVOKABLE void refreshStorage();
@@ -41,6 +59,7 @@ public:
 signals:
     void changed();
     void softwareChanged();
+    void transactionChanged();
     void servicesChanged();
     void hardwareChanged();
     void storageChanged();
@@ -54,9 +73,20 @@ private:
     int m_diskPercent = 0;
     QString m_packageManager;
     QString m_softwareStatus;
+    QVariantList m_softwareResults;
+    QVariantList m_softwareUpdates;
+    QVariantList m_repositories;
+    bool m_softwareBusy = false;
+    uint m_transactionId = 0;
+    int m_transactionProgress = 0;
+    QString m_transactionMessage;
     QVariantList m_services;
     QVariantMap m_hardware;
     QStringList m_kernels;
     QVariantList m_volumes;
     QVariantList m_users;
+
+private slots:
+    void onTransactionProgress(uint transactionId, uint percent, const QString &message);
+    void onTransactionFinished(uint transactionId, bool success, const QString &message);
 };
