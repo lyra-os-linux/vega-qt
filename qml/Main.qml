@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
-import QtCore as Core
 import org.kde.kirigami as Kirigami
 import "pages"
 
@@ -47,15 +46,7 @@ Kirigami.ApplicationWindow {
     Kirigami.Theme.neutralTextColor: darkMode ? "#f3bd59" : "#9a6500"
     Kirigami.Theme.negativeTextColor: darkMode ? "#ff7a85" : "#c52c3a"
 
-    Core.Settings {
-        id: appSettings
-        category: "appearance"
-        property bool darkMode: false
-    }
-
     Component.onCompleted: {
-        if (forceDarkTheme)
-            appSettings.darkMode = true
         systemBackend.setDarkTheme(window.darkMode)
         initialLoad.start()
     }
@@ -215,7 +206,6 @@ Kirigami.ApplicationWindow {
                         display: Controls.AbstractButton.IconOnly
                         onClicked: {
                             window.darkMode = !window.darkMode
-                            appSettings.darkMode = window.darkMode
                             systemBackend.setDarkTheme(window.darkMode)
                         }
                         Controls.ToolTip.visible: hovered

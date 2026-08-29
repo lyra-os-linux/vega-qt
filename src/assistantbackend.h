@@ -31,6 +31,7 @@ signals:
     void messagesChanged();
 
 private:
+    void checkConfiguredAsync();
     QString loadApiKey(const QString &provider) const;
     bool storeApiKey(const QString &provider, const QString &apiKey) const;
     QJsonObject requestBody() const;

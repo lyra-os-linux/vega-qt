@@ -8,6 +8,7 @@
 #include <QProcess>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QUrlQuery>
 
 namespace {
@@ -21,7 +22,32 @@ AssistantBackend::AssistantBackend(QObject *parent) : QObject(parent)
     QSettings settings;
     m_provider = settings.value(QStringLiteral("assistant/provider"), QStringLiteral("openai")).toString();
     m_model = settings.value(QStringLiteral("assistant/model"), QStringLiteral("gpt-4.1-mini")).toString();
-    m_configured = !loadApiKey(m_provider).isEmpty();
+    QTimer::singleShot(0, this, &AssistantBackend::checkConfiguredAsync);
+}
+
+void AssistantBackend::checkConfiguredAsync()
+{
+    const QString executable = QStandardPaths::findExecutable(QStringLiteral("secret-tool"));
+    if (executable.isEmpty())
+        return;
+
+    auto *process = new QProcess(this);
+    connect(process, &QProcess::finished, this,
+            [this, process](int exitCode, QProcess::ExitStatus exitStatus) {
+        const bool configured = exitStatus == QProcess::NormalExit && exitCode == 0
+            && !QString::fromUtf8(process->readAllStandardOutput()).trimmed().isEmpty();
+        if (m_configured != configured) {
+            m_configured = configured;
+            emit configurationChanged();
+        }
+        process->deleteLater();
+    });
+    process->start(executable, {QStringLiteral("lookup"), QStringLiteral("application"),
+                                QStringLiteral("vega-qt"), QStringLiteral("provider"), m_provider});
+    QTimer::singleShot(3000, process, [process] {
+        if (process->state() != QProcess::NotRunning)
+            process->kill();
+    });
 }
 
 QString AssistantBackend::loadApiKey(const QString &provider) const

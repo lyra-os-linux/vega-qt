@@ -3,7 +3,6 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include <QSettings>
 #include <QStyleHints>
 
 int main(int argc, char *argv[])
@@ -15,13 +14,9 @@ int main(int argc, char *argv[])
     SystemBackend backend;
     const bool forceDark = app.arguments().contains(QStringLiteral("--dark"));
     const bool openSoftwareUpdates = app.arguments().contains(QStringLiteral("--software-updates"));
-    QSettings settings;
     const bool systemDark = app.styleHints()
         && app.styleHints()->colorScheme() == Qt::ColorScheme::Dark;
-    const bool initialDark = forceDark
-        || (settings.contains(QStringLiteral("appearance/darkMode"))
-                ? settings.value(QStringLiteral("appearance/darkMode")).toBool()
-                : systemDark);
+    const bool initialDark = forceDark || systemDark;
     backend.setDarkTheme(initialDark);
     AssistantBackend assistant;
     QQmlApplicationEngine engine;
@@ -32,5 +27,16 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("initialPage"), openSoftwareUpdates ? 1 : 0);
     engine.loadFromModule(QStringLiteral("org.lyraos.vega.qt"), QStringLiteral("Main"));
     if (engine.rootObjects().isEmpty()) return 1;
+    QObject *root = engine.rootObjects().constFirst();
+    if (!forceDark && app.styleHints()) {
+        QObject::connect(app.styleHints(), &QStyleHints::colorSchemeChanged, root,
+                         [root, &backend](Qt::ColorScheme scheme) {
+            if (scheme == Qt::ColorScheme::Unknown)
+                return;
+            const bool dark = scheme == Qt::ColorScheme::Dark;
+            root->setProperty("darkMode", dark);
+            backend.setDarkTheme(dark);
+        });
+    }
     return app.exec();
 }
