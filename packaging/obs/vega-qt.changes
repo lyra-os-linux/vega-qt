@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Sat Aug 29 2026 - Rodrigo Brito <rodrigo@lyraos.com.br>
+
+- Avoid blocking application startup while checking the Secret Service.
+- Follow Plasma light and dark color scheme changes without restarting.
+- Package the update notifier executable and its autostart entry.
+
+-------------------------------------------------------------------
 Thu Aug 27 2026 - Rodrigo Brito <rodrigo@lyraos.com.br>
 
 - Add the hicolor icon build dependency for OBS directory ownership.
