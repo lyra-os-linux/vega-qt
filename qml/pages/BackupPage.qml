@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "../components"
 
 ColumnLayout {
     id: root
@@ -37,7 +38,7 @@ ColumnLayout {
             id: statusRow; anchors.fill: parent; anchors.margins: 10
             Kirigami.Icon { source: "document-save"; implicitWidth: 20; implicitHeight: 20 }
             Controls.Label { Layout.fillWidth: true; text: systemBackend.backupStatus; wrapMode: Text.WordWrap }
-            Controls.ProgressBar {
+            LyraProgressBar {
                 visible: systemBackend.backupProgress > 0 && systemBackend.backupProgress < 100
                 from: 0; to: 100; value: systemBackend.backupProgress; Layout.preferredWidth: 180
             }

@@ -46,18 +46,12 @@ QVariantList packageList(const QDBusMessage &reply)
 
 SystemBackend::SystemBackend(QObject *parent) : QObject(parent)
 {
-    refresh();
-    refreshSoftware();
-    refreshServices();
-    refreshHardware();
-    refreshStorage();
-    refreshUsers();
-    refreshNetwork();
-    refreshBluetooth();
-    refreshMonitor();
-    refreshDateTime();
-    refreshBackup();
-    refreshAppearance();
+    m_status = tr("Carregando informações do sistema…");
+    m_version = tr("Aguardando vegad");
+    m_distro = tr("Lyra OS");
+    m_disk = tr("Carregando…");
+    m_packageManager = tr("Carregar ao abrir Software");
+    m_softwareStatus = tr("Abra esta seção para consultar atualizações.");
     auto bus = QDBusConnection::systemBus();
     bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Software", "TransactionProgress",
                 this, SLOT(onTransactionProgress(uint,uint,QString)));
@@ -106,11 +100,16 @@ void SystemBackend::refresh()
 
 void SystemBackend::refreshSoftware()
 {
+    if (m_softwareBusy)
+        return;
+    m_softwareBusy = true;
+    emit softwareChanged();
     QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software",
                             QDBusConnection::systemBus());
     if (!software.isValid()) {
         m_packageManager = tr("Indisponível");
         m_softwareStatus = tr("O módulo Software do vegad não está disponível.");
+        m_softwareBusy = false;
         emit softwareChanged();
         return;
     }
@@ -145,6 +144,7 @@ void SystemBackend::refreshSoftware()
         }
         array.endArray();
     }
+    m_softwareBusy = false;
     emit softwareChanged();
 }
 

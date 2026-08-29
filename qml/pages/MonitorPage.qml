@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "../components"
 
 ColumnLayout {
     RowLayout {
@@ -45,7 +46,7 @@ ColumnLayout {
         contentItem: ColumnLayout {
             Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignLeft; text: title; color: Kirigami.Theme.disabledTextColor }
             Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: value; font.bold: true; font.pixelSize: 20 }
-            Controls.ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: progress }
+            LyraProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: progress }
         }
     }
 }

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Vega Update Notifier
+Comment=Notify when Lyra OS updates are available
+Exec=/usr/bin/vega-update-notifier-qt
+Icon=system-software-update
+Terminal=false
+NoDisplay=true
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2

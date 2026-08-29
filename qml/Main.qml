@@ -15,14 +15,15 @@ Kirigami.ApplicationWindow {
     title: "Vega — KDE"
 
     readonly property color lyraBlue: "#2777c7"
-    readonly property bool darkMode: forceDarkTheme || appSettings.darkMode
+    property bool darkMode: initialDarkTheme
     readonly property color pageColor: darkMode ? "#191c20" : "#f6f7f9"
     readonly property color cardColor: darkMode ? "#23272d" : "#ffffff"
     readonly property color alternateColor: darkMode ? "#20242a" : "#eef1f5"
     readonly property color primaryText: darkMode ? "#f1f3f5" : "#20242a"
     readonly property color secondaryText: darkMode ? "#aeb6c0" : "#66717e"
-    property int currentPage: 0
+    property int currentPage: initialPage
     property string searchText: ""
+    property var loadedPages: ({})
 
     color: pageColor
     palette.window: pageColor
@@ -56,7 +57,17 @@ Kirigami.ApplicationWindow {
         if (forceDarkTheme)
             appSettings.darkMode = true
         systemBackend.setDarkTheme(window.darkMode)
+        initialLoad.start()
     }
+
+    Timer {
+        id: initialLoad
+        interval: 250
+        repeat: false
+        onTriggered: window.loadPage(window.currentPage)
+    }
+
+    onCurrentPageChanged: loadPage(currentPage)
 
     ListModel {
         id: navigationModel
@@ -203,8 +214,9 @@ Kirigami.ApplicationWindow {
                         text: window.darkMode ? "Usar tema claro" : "Usar tema escuro"
                         display: Controls.AbstractButton.IconOnly
                         onClicked: {
-                            appSettings.darkMode = !window.darkMode
-                            systemBackend.setDarkTheme(appSettings.darkMode)
+                            window.darkMode = !window.darkMode
+                            appSettings.darkMode = window.darkMode
+                            systemBackend.setDarkTheme(window.darkMode)
                         }
                         Controls.ToolTip.visible: hovered
                         Controls.ToolTip.text: text
@@ -259,6 +271,8 @@ Kirigami.ApplicationWindow {
             }
 
             SoftwarePage {
+                id: softwarePage
+                property bool loaded: false
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: window.currentPage === 1
@@ -336,6 +350,27 @@ Kirigami.ApplicationWindow {
             "Eventos e diagnóstico do journal do sistema."
         ]
         return descriptions[page] || "Configuração do sistema"
+    }
+
+    function loadPage(page) {
+        if (loadedPages[page])
+            return
+        loadedPages[page] = true
+        loadedPages = Object.assign({}, loadedPages)
+        switch (page) {
+        case 0: systemBackend.refresh(); break
+        case 1: softwarePage.loaded = true; systemBackend.refreshSoftware(); break
+        case 2: systemBackend.refreshBackup(); break
+        case 4: systemBackend.refreshHardware(); break
+        case 5: systemBackend.refreshDateTime(); break
+        case 6: systemBackend.refreshAppearance(); break
+        case 7: systemBackend.refreshMonitor(); break
+        case 8: systemBackend.refreshStorage(); break
+        case 9: systemBackend.refreshNetwork(); break
+        case 10: systemBackend.refreshBluetooth(); break
+        case 11: systemBackend.refreshServices(); break
+        case 12: systemBackend.refreshUsers(); break
+        }
     }
 
     component DashboardCard: Kirigami.AbstractCard {

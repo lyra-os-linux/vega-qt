@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "../components"
 
 ColumnLayout {
     id: page
@@ -81,7 +82,7 @@ ColumnLayout {
         }
     }
 
-    Controls.ProgressBar {
+    LyraProgressBar {
         Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28
         visible: systemBackend.transactionProgress > 0 && systemBackend.transactionProgress < 100
         from: 0; to: 100; value: systemBackend.transactionProgress

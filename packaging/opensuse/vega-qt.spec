@@ -45,7 +45,9 @@ DESTDIR=%{buildroot} cmake --install build
 %license LICENSE
 %doc README.md
 %{_bindir}/vega-qt
+%{_bindir}/vega-update-notifier-qt
 %{_datadir}/applications/org.lyraos.Vega.Qt.desktop
+%{_sysconfdir}/xdg/autostart/vega-update-notifier-qt.desktop
 %{_datadir}/icons/hicolor/scalable/apps/vega.svg
 
 %changelog

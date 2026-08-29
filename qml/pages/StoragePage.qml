@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "../components"
 
 ColumnLayout {
     RowLayout {
@@ -23,7 +24,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         Controls.Label { text: modelData.name || modelData.path; font.bold: true }
                         Controls.Label { text: (modelData.model || modelData.fsType) + "  •  " + (modelData.mountpoint || "Não montado"); color: window.secondaryText }
-                        Controls.ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: modelData.percent }
+                        LyraProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: modelData.percent }
                     }
                     ColumnLayout {
                         Controls.Label { text: modelData.percent + "%"; font.bold: true }
