@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Sun Aug 30 2026 - Rodrigo Brito <rodrigo@lyraos.com.br>
+
+- Keep the interface responsive while vegad serves system data and actions.
+- Load dashboard modules and Software data through asynchronous D-Bus calls.
+- Fix the embedded Vega logo and Personalization loading placeholders.
+
+-------------------------------------------------------------------
 Sat Aug 29 2026 - Rodrigo Brito <rodrigo@lyraos.com.br>
 
 - Avoid blocking application startup while checking the Secret Service.

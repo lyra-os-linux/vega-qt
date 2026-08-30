@@ -24,17 +24,17 @@ do Vega: `home:rodrigosbrito:vega`. Ele pode coexistir com `vega-gtk` e
 `vega-xfce`.
 
 ```sh
-sudo zypper ar -f \
+pkexec zypper ar -f \
   https://download.opensuse.org/repositories/home:/rodrigosbrito:/vega/openSUSE_Leap_16.0/ \
   vega-obs
-sudo zypper --gpg-auto-import-keys refresh vega-obs
-sudo zypper install vega-qt
+pkexec zypper --gpg-auto-import-keys refresh vega-obs
+pkexec zypper install vega-qt
 ```
 
 Também é possível usar o instalador do repositório:
 
 ```sh
-sudo bash scripts/install-obs.sh
+pkexec bash scripts/install-obs.sh
 ```
 
 Esta é uma versão inicial para testes no openSUSE. Operações administrativas

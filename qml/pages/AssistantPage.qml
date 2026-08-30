@@ -129,13 +129,28 @@ ColumnLayout {
     RowLayout {
         visible: assistantBackend.configured
         Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28; Layout.bottomMargin: 22
-        Controls.TextArea {
-            id: messageField; Layout.fillWidth: true
-            placeholderText: "Escreva uma mensagem…"; wrapMode: TextEdit.Wrap
-            implicitHeight: Math.min(110, Math.max(46, contentHeight + 18))
-            enabled: !assistantBackend.busy
-            Keys.onReturnPressed: function(event) {
-                if (!(event.modifiers & Qt.ShiftModifier)) { root.send(); event.accepted = true }
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: Math.min(110, Math.max(46, messageField.contentHeight + 20))
+            color: window.cardColor
+            border.color: messageField.activeFocus ? window.lyraBlue : Qt.alpha(window.primaryText, 0.24)
+            radius: 5
+            TextEdit {
+                id: messageField
+                anchors.fill: parent; anchors.margins: 10
+                color: window.primaryText
+                selectionColor: window.lyraBlue; selectedTextColor: "white"
+                wrapMode: TextEdit.Wrap
+                enabled: !assistantBackend.busy
+                Accessible.name: "Escreva uma mensagem"
+                Keys.onReturnPressed: function(event) {
+                    if (!(event.modifiers & Qt.ShiftModifier)) { root.send(); event.accepted = true }
+                }
+            }
+            Controls.Label {
+                anchors.left: parent.left; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter
+                visible: messageField.text.length === 0 && !messageField.activeFocus
+                text: "Escreva uma mensagem…"; color: window.secondaryText
             }
         }
         Controls.Button {

@@ -5,7 +5,7 @@ VEGA_QT_REPO_URL="https://download.opensuse.org/repositories/home:/rodrigosbrito
 VEGA_QT_REPO_ALIAS="vega-obs"
 
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Execute como administrador: sudo bash scripts/install-obs.sh" >&2
+  echo "Execute como administrador: pkexec bash scripts/install-obs.sh" >&2
   exit 1
 fi
 
@@ -27,8 +27,8 @@ if ! zypper --xmlout search --match-exact vega-qt 2>/dev/null \
   echo >&2
   echo "O repositório foi configurado, mas o pacote vega-qt ainda não está disponível." >&2
   echo "A primeira publicação pode estar sendo processada pelo OBS. Tente novamente mais tarde:" >&2
-  echo "  sudo zypper refresh vega-obs" >&2
-  echo "  sudo zypper install vega-qt" >&2
+  echo "  pkexec zypper refresh vega-obs" >&2
+  echo "  pkexec zypper install vega-qt" >&2
   exit 2
 fi
 
