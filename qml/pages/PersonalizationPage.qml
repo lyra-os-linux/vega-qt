@@ -77,19 +77,19 @@ Controls.ScrollView {
 
             AppearanceCard {
                 title: "Tema global"; description: "Aparência completa do ambiente, painéis e área de trabalho"
-                value: systemBackend.appearance.style; iconName: "preferences-desktop"; moduleName: "kcm_lookandfeel"
+                value: systemBackend.appearance.style || "Carregando…"; iconName: "preferences-desktop"; moduleName: "kcm_lookandfeel"
             }
             AppearanceCard {
                 title: "Cores"; description: "Paleta usada por janelas, textos e elementos de interface"
-                value: systemBackend.appearance.colors; iconName: "preferences-desktop-color"; moduleName: "kcm_colors"
+                value: systemBackend.appearance.colors || "Carregando…"; iconName: "preferences-desktop-color"; moduleName: "kcm_colors"
             }
             AppearanceCard {
                 title: "Ícones"; description: "Conjunto de ícones dos aplicativos e do sistema"
-                value: systemBackend.appearance.icons; iconName: "preferences-desktop-icons"; moduleName: "kcm_icons"
+                value: systemBackend.appearance.icons || "Carregando…"; iconName: "preferences-desktop-icons"; moduleName: "kcm_icons"
             }
             AppearanceCard {
                 title: "Fontes"; description: "Família, tamanho e renderização dos textos"
-                value: systemBackend.appearance.font; iconName: "preferences-desktop-font"; moduleName: "kcm_fonts"
+                value: systemBackend.appearance.font || "Carregando…"; iconName: "preferences-desktop-font"; moduleName: "kcm_fonts"
             }
             AppearanceCard {
                 title: "Cursores"; description: "Tema e tamanho do ponteiro do mouse"

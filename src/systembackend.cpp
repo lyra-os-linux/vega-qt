@@ -2,6 +2,7 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusMessage>
+#include <QDBusPendingCallWatcher>
 #include <QDBusReply>
 #include <QDateTime>
 #include <QFileInfo>
@@ -12,6 +13,7 @@
 #include <QPalette>
 #include <QStyleHints>
 #include <QVariantMap>
+#include <functional>
 
 namespace {
 constexpr auto Service = "org.lyraos.Vega1";
@@ -41,6 +43,17 @@ QVariantList packageList(const QDBusMessage &reply)
     }
     array.endArray();
     return packages;
+}
+
+void watchCall(QObject *owner, const QDBusPendingCall &call,
+               std::function<void(const QDBusMessage &)> finished)
+{
+    auto *watcher = new QDBusPendingCallWatcher(call, owner);
+    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, owner,
+                     [watcher, finished = std::move(finished)] {
+        finished(watcher->reply());
+        watcher->deleteLater();
+    });
 }
 }
 
@@ -80,22 +93,39 @@ void SystemBackend::refresh()
         emit changed();
         return;
     }
-    const QDBusReply<bool> ping = system.call(QStringLiteral("Ping"));
-    const QDBusReply<QString> version = system.call(QStringLiteral("Version"));
-    const QDBusReply<QString> distro = system.call(QStringLiteral("Distro"));
-    const QDBusMessage disk = system.call(QStringLiteral("DiskUsage"));
-    m_connected = ping.isValid() && ping.value();
-    m_status = m_connected ? tr("Sistema conectado") : tr("Falha na comunicação");
-    m_version = version.isValid() ? version.value() : tr("Desconhecida");
-    m_distro = distro.isValid() ? distro.value() : tr("Não detectada");
-    if (disk.type() == QDBusMessage::ReplyMessage && disk.arguments().size() == 3) {
-        m_disk = tr("%1 usados de %2").arg(disk.arguments().at(0).toString(), disk.arguments().at(1).toString());
-        m_diskPercent = static_cast<int>(disk.arguments().at(2).toUInt());
-    } else {
-        m_disk = tr("Informação indisponível");
-        m_diskPercent = 0;
-    }
+    const quint64 requestId = ++m_refreshRequestId;
+    m_status = tr("Carregando informações do sistema…");
     emit changed();
+    watchCall(this, system.asyncCall(QStringLiteral("Ping")), [this, requestId](const QDBusMessage &reply) {
+        if (requestId != m_refreshRequestId) return;
+        m_connected = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
+            && reply.arguments().first().toBool();
+        m_status = m_connected ? tr("Sistema conectado") : tr("Falha na comunicação");
+        emit changed();
+    });
+    watchCall(this, system.asyncCall(QStringLiteral("Version")), [this, requestId](const QDBusMessage &reply) {
+        if (requestId != m_refreshRequestId) return;
+        m_version = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
+            ? reply.arguments().first().toString() : tr("Desconhecida");
+        emit changed();
+    });
+    watchCall(this, system.asyncCall(QStringLiteral("Distro")), [this, requestId](const QDBusMessage &reply) {
+        if (requestId != m_refreshRequestId) return;
+        m_distro = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
+            ? reply.arguments().first().toString() : tr("Não detectada");
+        emit changed();
+    });
+    watchCall(this, system.asyncCall(QStringLiteral("DiskUsage")), [this, requestId](const QDBusMessage &reply) {
+        if (requestId != m_refreshRequestId) return;
+        if (reply.type() == QDBusMessage::ReplyMessage && reply.arguments().size() == 3) {
+            m_disk = tr("%1 usados de %2").arg(reply.arguments().at(0).toString(), reply.arguments().at(1).toString());
+            m_diskPercent = static_cast<int>(reply.arguments().at(2).toUInt());
+        } else {
+            m_disk = tr("Informação indisponível");
+            m_diskPercent = 0;
+        }
+        emit changed();
+    });
 }
 
 void SystemBackend::refreshSoftware()
@@ -113,103 +143,148 @@ void SystemBackend::refreshSoftware()
         emit softwareChanged();
         return;
     }
-    const QDBusReply<QString> manager = software.call(QStringLiteral("PackageManagerName"));
-    m_packageManager = manager.isValid() ? manager.value() : tr("Zypper");
-    m_softwareUpdates = packageList(software.call(QStringLiteral("ListUpdates")));
-    if (!m_softwareUpdates.isEmpty()) {
-        m_softwareStatus = tr("%1 atualização(ões) disponível(is)").arg(m_softwareUpdates.size());
-    } else {
-        const QDBusMessage native = software.call(QStringLiteral("ListNativeUpdates"));
-        if (native.type() == QDBusMessage::ReplyMessage) {
-            m_softwareUpdates = packageList(native);
-            m_softwareStatus = m_softwareUpdates.isEmpty() ? tr("Sistema atualizado")
-                : tr("%1 atualização(ões) disponível(is)").arg(m_softwareUpdates.size());
-        } else {
-        m_softwareStatus = tr("Não foi possível consultar atualizações.");
-        }
-    }
+    const quint64 requestId = ++m_softwareRequestId;
+    m_softwareStatus = tr("Consultando atualizações…");
     m_repositories.clear();
-    const QDBusMessage repos = software.call(QStringLiteral("ListRepos"));
-    if (repos.type() == QDBusMessage::ReplyMessage && !repos.arguments().isEmpty()) {
-        const QDBusArgument array = qvariant_cast<QDBusArgument>(repos.arguments().first());
-        array.beginArray();
-        while (!array.atEnd()) {
-            QString name;
-            bool enabled = false;
-            array.beginStructure();
-            array >> name >> enabled;
-            array.endStructure();
-            m_repositories.append(QVariantMap{{QStringLiteral("name"), name},
-                                               {QStringLiteral("enabled"), enabled}});
-        }
-        array.endArray();
-    }
-    m_softwareBusy = false;
     emit softwareChanged();
+    watchCall(this, software.asyncCall(QStringLiteral("PackageManagerName")), [this, requestId](const QDBusMessage &reply) {
+        if (requestId != m_softwareRequestId) return;
+        m_packageManager = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
+            ? reply.arguments().first().toString() : tr("Zypper");
+        emit softwareChanged();
+    });
+    watchCall(this, software.asyncCall(QStringLiteral("ListRepos")), [this, requestId](const QDBusMessage &reply) {
+        if (requestId != m_softwareRequestId) return;
+        m_repositories.clear();
+        if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+            const QDBusArgument array = qvariant_cast<QDBusArgument>(reply.arguments().first());
+            array.beginArray();
+            while (!array.atEnd()) {
+                QString name; bool enabled = false;
+                array.beginStructure(); array >> name >> enabled; array.endStructure();
+                m_repositories.append(QVariantMap{{QStringLiteral("name"), name},
+                                                   {QStringLiteral("enabled"), enabled}});
+            }
+            array.endArray();
+        }
+        emit softwareChanged();
+    });
+    watchCall(this, software.asyncCall(QStringLiteral("ListUpdates")), [this, requestId](const QDBusMessage &reply) {
+        if (requestId != m_softwareRequestId) return;
+        m_softwareUpdates = packageList(reply);
+        if (!m_softwareUpdates.isEmpty()) {
+            m_softwareStatus = tr("%1 atualização(ões) disponível(is)").arg(m_softwareUpdates.size());
+            m_softwareBusy = false;
+            emit softwareChanged();
+            return;
+        }
+        QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software", QDBusConnection::systemBus());
+        watchCall(this, software.asyncCall(QStringLiteral("ListNativeUpdates")), [this, requestId](const QDBusMessage &native) {
+            if (requestId != m_softwareRequestId) return;
+            m_softwareUpdates = packageList(native);
+            m_softwareStatus = native.type() == QDBusMessage::ReplyMessage
+                ? (m_softwareUpdates.isEmpty() ? tr("Sistema atualizado")
+                   : tr("%1 atualização(ões) disponível(is)").arg(m_softwareUpdates.size()))
+                : tr("Não foi possível consultar atualizações.");
+            m_softwareBusy = false;
+            emit softwareChanged();
+        });
+    });
 }
 
 void SystemBackend::searchSoftware(const QString &query)
 {
     if (query.trimmed().size() < 2)
         return;
+    const quint64 requestId = ++m_searchRequestId;
     m_softwareBusy = true;
     emit softwareChanged();
     QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software",
                             QDBusConnection::systemBus());
-    m_softwareResults = packageList(software.call(QStringLiteral("Search"), query.trimmed()));
-    if (m_softwareResults.isEmpty())
-        m_softwareResults = packageList(software.call(QStringLiteral("SearchNative"), query.trimmed()));
-    m_softwareBusy = false;
-    emit softwareChanged();
+    const QString term = query.trimmed();
+    watchCall(this, software.asyncCall(QStringLiteral("Search"), term), [this, requestId, term](const QDBusMessage &reply) {
+        if (requestId != m_searchRequestId) return;
+        m_softwareResults = packageList(reply);
+        if (!m_softwareResults.isEmpty()) {
+            m_softwareBusy = false; emit softwareChanged(); return;
+        }
+        QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software", QDBusConnection::systemBus());
+        watchCall(this, software.asyncCall(QStringLiteral("SearchNative"), term), [this, requestId](const QDBusMessage &native) {
+            if (requestId != m_searchRequestId) return;
+            m_softwareResults = packageList(native);
+            m_softwareBusy = false;
+            emit softwareChanged();
+        });
+    });
 }
 
-static uint startSoftwareTransaction(const QString &method, const QVariantList &arguments)
+static void startSoftwareTransaction(QObject *owner, const QString &method,
+                                     const QVariantList &arguments,
+                                     std::function<void(uint)> finished)
 {
     QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software",
                             QDBusConnection::systemBus());
-    const QDBusMessage reply = software.callWithArgumentList(QDBus::Block, method, arguments);
-    return reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
-        ? reply.arguments().first().toUInt() : 0;
+    watchCall(owner, software.asyncCallWithArgumentList(method, arguments),
+              [finished = std::move(finished)](const QDBusMessage &reply) {
+        finished(reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
+            ? reply.arguments().first().toUInt() : 0);
+    });
 }
 
 void SystemBackend::installPackage(const QString &origin, const QString &id)
 {
-    m_transactionId = startSoftwareTransaction(QStringLiteral("Install"), {origin, id});
     m_transactionProgress = 0;
-    m_transactionMessage = m_transactionId ? tr("Instalação iniciada") : tr("Não foi possível iniciar a instalação");
+    m_transactionMessage = tr("Solicitando instalação…");
     emit transactionChanged();
+    startSoftwareTransaction(this, QStringLiteral("Install"), {origin, id}, [this](uint id) {
+        m_transactionId = id;
+        m_transactionMessage = id ? tr("Instalação iniciada") : tr("Não foi possível iniciar a instalação");
+        emit transactionChanged();
+    });
 }
 
 void SystemBackend::removePackage(const QString &origin, const QString &id)
 {
-    m_transactionId = startSoftwareTransaction(QStringLiteral("Remove"), {origin, id});
     m_transactionProgress = 0;
-    m_transactionMessage = m_transactionId ? tr("Remoção iniciada") : tr("Não foi possível iniciar a remoção");
+    m_transactionMessage = tr("Solicitando remoção…");
     emit transactionChanged();
+    startSoftwareTransaction(this, QStringLiteral("Remove"), {origin, id}, [this](uint id) {
+        m_transactionId = id;
+        m_transactionMessage = id ? tr("Remoção iniciada") : tr("Não foi possível iniciar a remoção");
+        emit transactionChanged();
+    });
 }
 
 void SystemBackend::updateAll()
 {
-    m_transactionId = startSoftwareTransaction(QStringLiteral("UpdateAll"), {});
     m_transactionProgress = 0;
-    m_transactionMessage = m_transactionId ? tr("Atualização iniciada") : tr("Não foi possível iniciar a atualização");
+    m_transactionMessage = tr("Solicitando atualização…");
     emit transactionChanged();
+    startSoftwareTransaction(this, QStringLiteral("UpdateAll"), {}, [this](uint id) {
+        m_transactionId = id;
+        m_transactionMessage = id ? tr("Atualização iniciada") : tr("Não foi possível iniciar a atualização");
+        emit transactionChanged();
+    });
 }
 
 void SystemBackend::updatePackage(const QString &origin, const QString &id)
 {
-    m_transactionId = startSoftwareTransaction(QStringLiteral("UpdatePackage"), {origin, id});
     m_transactionProgress = 0;
-    m_transactionMessage = m_transactionId ? tr("Atualização iniciada") : tr("Não foi possível iniciar a atualização");
+    m_transactionMessage = tr("Solicitando atualização…");
     emit transactionChanged();
+    startSoftwareTransaction(this, QStringLiteral("UpdatePackage"), {origin, id}, [this](uint id) {
+        m_transactionId = id;
+        m_transactionMessage = id ? tr("Atualização iniciada") : tr("Não foi possível iniciar a atualização");
+        emit transactionChanged();
+    });
 }
 
 void SystemBackend::setRepositoryEnabled(const QString &name, bool enabled)
 {
     QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software",
                             QDBusConnection::systemBus());
-    software.call(QStringLiteral("SetRepoEnabled"), name, enabled);
-    refreshSoftware();
+    watchCall(this, software.asyncCall(QStringLiteral("SetRepoEnabled"), name, enabled),
+              [this](const QDBusMessage &) { refreshSoftware(); });
 }
 
 void SystemBackend::onTransactionProgress(uint transactionId, uint percent, const QString &message)
@@ -238,10 +313,11 @@ void SystemBackend::refreshServices(bool all)
                                      QDBusConnection::systemBus());
     m_showingAllServices = all;
     m_services.clear();
-    const QDBusMessage reply = servicesInterface.call(all ? QStringLiteral("ListAllServicesLocalized")
-                                                          : QStringLiteral("ListServicesLocalized"),
-                                                       QStringLiteral("pt_BR"));
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+    emit servicesChanged();
+    watchCall(this, servicesInterface.asyncCall(all ? QStringLiteral("ListAllServicesLocalized")
+                                                    : QStringLiteral("ListServicesLocalized"),
+                                                   QStringLiteral("pt_BR")), [this](const QDBusMessage &reply) {
+      if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(reply.arguments().first());
         array.beginArray();
         while (!array.atEnd()) {
@@ -260,8 +336,9 @@ void SystemBackend::refreshServices(bool all)
             m_services.append(item);
         }
         array.endArray();
-    }
-    emit servicesChanged();
+      }
+      emit servicesChanged();
+    });
 }
 
 void SystemBackend::refreshHardware()
@@ -269,9 +346,10 @@ void SystemBackend::refreshHardware()
     m_hardware.clear();
     QDBusInterface hardware(Service, ObjectPath, "org.lyraos.Vega1.Hardware",
                             QDBusConnection::systemBus());
-    const QDBusMessage inventory = hardware.call(QStringLiteral("InventoryLocalized"),
-                                                  QStringLiteral("pt_BR"));
-    if (inventory.type() == QDBusMessage::ReplyMessage && !inventory.arguments().isEmpty()) {
+    emit hardwareChanged();
+    watchCall(this, hardware.asyncCall(QStringLiteral("InventoryLocalized"),
+                                       QStringLiteral("pt_BR")), [this](const QDBusMessage &inventory) {
+      if (inventory.type() == QDBusMessage::ReplyMessage && !inventory.arguments().isEmpty()) {
         const QDBusArgument data = qvariant_cast<QDBusArgument>(inventory.arguments().first());
         QString cpu, gpu, ram;
         data.beginStructure();
@@ -280,12 +358,16 @@ void SystemBackend::refreshHardware()
         m_hardware.insert(QStringLiteral("cpu"), cpu);
         m_hardware.insert(QStringLiteral("gpu"), gpu);
         m_hardware.insert(QStringLiteral("ram"), ram);
-    }
+      }
+      emit hardwareChanged();
+    });
     QDBusInterface kernel(Service, ObjectPath, "org.lyraos.Vega1.Kernel",
                           QDBusConnection::systemBus());
-    const QDBusReply<QStringList> installed = kernel.call(QStringLiteral("ListInstalled"));
-    m_kernels = installed.isValid() ? installed.value() : QStringList{};
-    emit hardwareChanged();
+    watchCall(this, kernel.asyncCall(QStringLiteral("ListInstalled")), [this](const QDBusMessage &reply) {
+        m_kernels = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
+            ? reply.arguments().first().toStringList() : QStringList{};
+        emit hardwareChanged();
+    });
 }
 
 void SystemBackend::refreshStorage()
@@ -293,8 +375,9 @@ void SystemBackend::refreshStorage()
     m_volumes.clear();
     QDBusInterface storage(Service, ObjectPath, "org.lyraos.Vega1.Storage",
                            QDBusConnection::systemBus());
-    const QDBusMessage reply = storage.call(QStringLiteral("ListVolumes"));
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+    emit storageChanged();
+    watchCall(this, storage.asyncCall(QStringLiteral("ListVolumes")), [this](const QDBusMessage &reply) {
+      if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(reply.arguments().first());
         array.beginArray();
         while (!array.atEnd()) {
@@ -313,8 +396,9 @@ void SystemBackend::refreshStorage()
             m_volumes.append(item);
         }
         array.endArray();
-    }
-    emit storageChanged();
+      }
+      emit storageChanged();
+    });
 }
 
 void SystemBackend::refreshUsers()
@@ -322,8 +406,9 @@ void SystemBackend::refreshUsers()
     m_users.clear();
     QDBusInterface usersInterface(Service, ObjectPath, "org.lyraos.Vega1.Users",
                                   QDBusConnection::systemBus());
-    const QDBusMessage reply = usersInterface.call(QStringLiteral("ListUsers"));
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+    emit usersChanged();
+    watchCall(this, usersInterface.asyncCall(QStringLiteral("ListUsers")), [this](const QDBusMessage &reply) {
+      if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(reply.arguments().first());
         array.beginArray();
         while (!array.atEnd()) {
@@ -340,8 +425,9 @@ void SystemBackend::refreshUsers()
             m_users.append(item);
         }
         array.endArray();
-    }
-    emit usersChanged();
+      }
+      emit usersChanged();
+    });
 }
 
 void SystemBackend::refreshNetwork()
@@ -349,8 +435,9 @@ void SystemBackend::refreshNetwork()
     m_networkInterfaces.clear();
     m_wifiNetworks.clear();
     QDBusInterface network(Service, ObjectPath, "org.lyraos.Vega1.Network", QDBusConnection::systemBus());
-    const QDBusMessage interfaces = network.call(QStringLiteral("ListInterfaces"));
-    if (interfaces.type() == QDBusMessage::ReplyMessage && !interfaces.arguments().isEmpty()) {
+    emit networkChanged();
+    watchCall(this, network.asyncCall(QStringLiteral("ListInterfaces")), [this](const QDBusMessage &interfaces) {
+      if (interfaces.type() == QDBusMessage::ReplyMessage && !interfaces.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(interfaces.arguments().first());
         array.beginArray();
         while (!array.atEnd()) {
@@ -363,9 +450,11 @@ void SystemBackend::refreshNetwork()
                 {"ipv4", ipv4}, {"speed", speed}, {"ssid", ssid}, {"device", device}});
         }
         array.endArray();
-    }
-    const QDBusMessage wifi = network.call(QStringLiteral("ListWifi"));
-    if (wifi.type() == QDBusMessage::ReplyMessage && !wifi.arguments().isEmpty()) {
+      }
+      emit networkChanged();
+    });
+    watchCall(this, network.asyncCall(QStringLiteral("ListWifi")), [this](const QDBusMessage &wifi) {
+      if (wifi.type() == QDBusMessage::ReplyMessage && !wifi.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(wifi.arguments().first());
         array.beginArray();
         while (!array.atEnd()) {
@@ -374,14 +463,17 @@ void SystemBackend::refreshNetwork()
             m_wifiNetworks.append(QVariantMap{{"ssid", ssid}, {"security", security}, {"signal", signal}, {"active", active}, {"device", device}});
         }
         array.endArray();
-    }
+      }
+      emit networkChanged();
+    });
     QDBusInterface firewall(Service, ObjectPath, "org.lyraos.Vega1.Firewall", QDBusConnection::systemBus());
-    const QDBusMessage status = firewall.call(QStringLiteral("Status"));
-    if (status.type() == QDBusMessage::ReplyMessage && status.arguments().size() >= 2) {
-        m_firewallEnabled = status.arguments().at(0).toBool();
-        m_firewallZone = status.arguments().at(1).toString();
-    }
-    emit networkChanged();
+    watchCall(this, firewall.asyncCall(QStringLiteral("Status")), [this](const QDBusMessage &status) {
+        if (status.type() == QDBusMessage::ReplyMessage && status.arguments().size() >= 2) {
+            m_firewallEnabled = status.arguments().at(0).toBool();
+            m_firewallZone = status.arguments().at(1).toString();
+        }
+        emit networkChanged();
+    });
 }
 
 void SystemBackend::refreshBluetooth()
@@ -389,8 +481,9 @@ void SystemBackend::refreshBluetooth()
     m_bluetoothStatus.clear();
     m_bluetoothDevices.clear();
     QDBusInterface bluetooth(Service, ObjectPath, "org.lyraos.Vega1.Bluetooth", QDBusConnection::systemBus());
-    const QDBusMessage status = bluetooth.call(QStringLiteral("Status"));
-    if (status.type() == QDBusMessage::ReplyMessage && !status.arguments().isEmpty()) {
+    emit bluetoothChanged();
+    watchCall(this, bluetooth.asyncCall(QStringLiteral("Status")), [this](const QDBusMessage &status) {
+      if (status.type() == QDBusMessage::ReplyMessage && !status.arguments().isEmpty()) {
         const QDBusArgument data = qvariant_cast<QDBusArgument>(status.arguments().first());
         bool available, powered, discoverable, pairable, scanning, transferAvailable, receiverActive;
         QString controller, controllerName, receivePath;
@@ -400,9 +493,11 @@ void SystemBackend::refreshBluetooth()
         data.endStructure();
         m_bluetoothStatus = {{"available", available}, {"powered", powered}, {"discoverable", discoverable},
             {"scanning", scanning}, {"controller", controllerName.isEmpty() ? controller : controllerName}};
-    }
-    const QDBusMessage devices = bluetooth.call(QStringLiteral("ListDevices"));
-    if (devices.type() == QDBusMessage::ReplyMessage && !devices.arguments().isEmpty()) {
+      }
+      emit bluetoothChanged();
+    });
+    watchCall(this, bluetooth.asyncCall(QStringLiteral("ListDevices")), [this](const QDBusMessage &devices) {
+      if (devices.type() == QDBusMessage::ReplyMessage && !devices.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(devices.arguments().first());
         array.beginArray();
         while (!array.atEnd()) {
@@ -412,36 +507,39 @@ void SystemBackend::refreshBluetooth()
                 {"icon", icon}, {"paired", paired}, {"trusted", trusted}, {"connected", connected}, {"rssi", rssi}});
         }
         array.endArray();
-    }
-    emit bluetoothChanged();
+      }
+      emit bluetoothChanged();
+    });
 }
 
 void SystemBackend::queryLogs(const QString &unit, const QString &priority, const QString &search)
 {
     QDBusInterface logs(Service, ObjectPath, "org.lyraos.Vega1.Logs", QDBusConnection::systemBus());
-    const QDBusReply<QStringList> units = logs.call(QStringLiteral("ListUnits"));
-    if (!units.isValid()) {
-        m_logsUnlocked = false;
-        m_logsStatus = tr("A autenticação administrativa foi cancelada ou recusada.");
-        m_logUnits.clear();
-        m_logLines.clear();
-        emit logsChanged();
-        return;
-    }
-    m_logUnits = units.value();
-    const QDBusReply<QStringList> lines = logs.call(QStringLiteral("Query"), unit, priority,
-                                                    QStringLiteral("today"), search, 300u);
-    if (!lines.isValid()) {
-        m_logsUnlocked = false;
-        m_logsStatus = tr("Não foi possível consultar o log administrativo.");
-        m_logLines.clear();
-        emit logsChanged();
-        return;
-    }
-    m_logsUnlocked = true;
-    m_logsStatus = lines.value().isEmpty() ? tr("Nenhuma entrada encontrada para os filtros atuais.") : QString{};
-    m_logLines = lines.value();
+    m_logsStatus = tr("Consultando o log…");
     emit logsChanged();
+    watchCall(this, logs.asyncCall(QStringLiteral("ListUnits")),
+              [this, unit, priority, search](const QDBusMessage &unitsReply) {
+        if (unitsReply.type() != QDBusMessage::ReplyMessage || unitsReply.arguments().isEmpty()) {
+            m_logsUnlocked = false;
+            m_logsStatus = tr("A autenticação administrativa foi cancelada ou recusada.");
+            m_logUnits.clear(); m_logLines.clear(); emit logsChanged(); return;
+        }
+        m_logUnits = unitsReply.arguments().first().toStringList();
+        QDBusInterface logs(Service, ObjectPath, "org.lyraos.Vega1.Logs", QDBusConnection::systemBus());
+        watchCall(this, logs.asyncCall(QStringLiteral("Query"), unit, priority,
+                                       QStringLiteral("today"), search, 300u),
+                  [this](const QDBusMessage &linesReply) {
+            if (linesReply.type() != QDBusMessage::ReplyMessage || linesReply.arguments().isEmpty()) {
+                m_logsUnlocked = false;
+                m_logsStatus = tr("Não foi possível consultar o log administrativo.");
+                m_logLines.clear(); emit logsChanged(); return;
+            }
+            m_logLines = linesReply.arguments().first().toStringList();
+            m_logsUnlocked = true;
+            m_logsStatus = m_logLines.isEmpty() ? tr("Nenhuma entrada encontrada para os filtros atuais.") : QString{};
+            emit logsChanged();
+        });
+    });
 }
 
 void SystemBackend::refreshMonitor()
@@ -449,8 +547,9 @@ void SystemBackend::refreshMonitor()
     m_metrics.clear();
     m_processes.clear();
     QDBusInterface monitor(Service, ObjectPath, "org.lyraos.Vega1.Monitor", QDBusConnection::systemBus());
-    const QDBusMessage metricsReply = monitor.call(QStringLiteral("Metrics"));
-    if (metricsReply.type() == QDBusMessage::ReplyMessage && !metricsReply.arguments().isEmpty()) {
+    emit monitorChanged();
+    watchCall(this, monitor.asyncCall(QStringLiteral("Metrics")), [this](const QDBusMessage &metricsReply) {
+      if (metricsReply.type() == QDBusMessage::ReplyMessage && !metricsReply.arguments().isEmpty()) {
         const QDBusArgument data = qvariant_cast<QDBusArgument>(metricsReply.arguments().first());
         double cpu = 0, gpu = -1; qulonglong memUsed, memTotal, swapUsed, swapTotal, diskRead, diskWrite, netRx, netTx;
         QList<double> cores, gpus;
@@ -462,9 +561,11 @@ void SystemBackend::refreshMonitor()
         m_metrics = {{"cpu", cpu}, {"memory", memPercent}, {"memUsed", QVariant::fromValue(memUsed)},
                      {"memTotal", QVariant::fromValue(memTotal)}, {"gpu", gpu},
                      {"netRx", QVariant::fromValue(netRx)}, {"netTx", QVariant::fromValue(netTx)}};
-    }
-    const QDBusMessage processReply = monitor.call(QStringLiteral("ListProcesses"));
-    if (processReply.type() == QDBusMessage::ReplyMessage && !processReply.arguments().isEmpty()) {
+      }
+      emit monitorChanged();
+    });
+    watchCall(this, monitor.asyncCall(QStringLiteral("ListProcesses")), [this](const QDBusMessage &processReply) {
+      if (processReply.type() == QDBusMessage::ReplyMessage && !processReply.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(processReply.arguments().first());
         array.beginArray();
         while (!array.atEnd()) {
@@ -474,8 +575,9 @@ void SystemBackend::refreshMonitor()
                 {"cpu", cpu}, {"memory", QVariant::fromValue(memory)}, {"state", state}});
         }
         array.endArray();
-    }
-    emit monitorChanged();
+      }
+      emit monitorChanged();
+    });
 }
 
 void SystemBackend::refreshDateTime()
@@ -483,8 +585,9 @@ void SystemBackend::refreshDateTime()
     QDBusInterface dateTime(Service, ObjectPath, "org.lyraos.Vega1.DateTime",
                             QDBusConnection::systemBus());
     m_dateTimeStatus.clear();
-    const QDBusMessage status = dateTime.call(QStringLiteral("Status"));
-    if (status.type() == QDBusMessage::ReplyMessage && !status.arguments().isEmpty()) {
+    emit dateTimeChanged();
+    watchCall(this, dateTime.asyncCall(QStringLiteral("Status")), [this](const QDBusMessage &status) {
+      if (status.type() == QDBusMessage::ReplyMessage && !status.arguments().isEmpty()) {
         const QDBusArgument data = qvariant_cast<QDBusArgument>(status.arguments().first());
         QString timezone, locale, keymap;
         bool ntp = false;
@@ -495,14 +598,19 @@ void SystemBackend::refreshDateTime()
                             {QStringLiteral("ntp"), ntp},
                             {QStringLiteral("locale"), locale},
                             {QStringLiteral("keymap"), keymap}};
-    }
-    const QDBusReply<QStringList> timezones = dateTime.call(QStringLiteral("ListTimezones"));
-    const QDBusReply<QStringList> locales = dateTime.call(QStringLiteral("ListLocales"));
-    const QDBusReply<QStringList> keymaps = dateTime.call(QStringLiteral("ListKeymaps"));
-    m_timezones = timezones.isValid() ? timezones.value() : QStringList{};
-    m_locales = locales.isValid() ? locales.value() : QStringList{};
-    m_keymaps = keymaps.isValid() ? keymaps.value() : QStringList{};
-    emit dateTimeChanged();
+      }
+      emit dateTimeChanged();
+    });
+    const auto updateList = [this](QStringList SystemBackend::*member) {
+        return [this, member](const QDBusMessage &reply) {
+            this->*member = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
+                ? reply.arguments().first().toStringList() : QStringList{};
+            emit dateTimeChanged();
+        };
+    };
+    watchCall(this, dateTime.asyncCall(QStringLiteral("ListTimezones")), updateList(&SystemBackend::m_timezones));
+    watchCall(this, dateTime.asyncCall(QStringLiteral("ListLocales")), updateList(&SystemBackend::m_locales));
+    watchCall(this, dateTime.asyncCall(QStringLiteral("ListKeymaps")), updateList(&SystemBackend::m_keymaps));
 }
 
 void SystemBackend::applyDateTime(const QString &timezone, bool ntp,
@@ -510,16 +618,20 @@ void SystemBackend::applyDateTime(const QString &timezone, bool ntp,
 {
     QDBusInterface dateTime(Service, ObjectPath, "org.lyraos.Vega1.DateTime",
                             QDBusConnection::systemBus());
-    dateTime.call(QStringLiteral("Apply"), timezone, ntp, locale, keymap);
-    refreshDateTime();
+    watchCall(this, dateTime.asyncCall(QStringLiteral("Apply"), timezone, ntp, locale, keymap),
+              [this](const QDBusMessage &) { refreshDateTime(); });
 }
 
 void SystemBackend::refreshBackup(const QString &configId)
 {
     QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
     m_backupConfigs.clear();
-    const QDBusMessage configs = backup.call(QStringLiteral("ListConfigs"));
-    if (configs.type() == QDBusMessage::ReplyMessage && !configs.arguments().isEmpty()) {
+    m_backupSnapshots.clear();
+    if (!configId.isEmpty())
+        m_backupConfigId = configId;
+    emit backupChanged();
+    watchCall(this, backup.asyncCall(QStringLiteral("ListConfigs")), [this](const QDBusMessage &configs) {
+      if (configs.type() == QDBusMessage::ReplyMessage && !configs.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(configs.arguments().first());
         array.beginArray();
         while (!array.atEnd()) {
@@ -530,14 +642,14 @@ void SystemBackend::refreshBackup(const QString &configId)
                 {"destination", destination}, {"uuid", uuid}, {"frequency", frequency}});
         }
         array.endArray();
-    }
-    if (!configId.isEmpty())
-        m_backupConfigId = configId;
-    if (m_backupConfigId.isEmpty() && !m_backupConfigs.isEmpty())
-        m_backupConfigId = m_backupConfigs.first().toMap().value("id").toString();
-    m_backupSnapshots.clear();
-    if (!m_backupConfigId.isEmpty()) {
-        const QDBusMessage snapshots = backup.call(QStringLiteral("ListSnapshots"), m_backupConfigId);
+      }
+      if (m_backupConfigId.isEmpty() && !m_backupConfigs.isEmpty())
+          m_backupConfigId = m_backupConfigs.first().toMap().value("id").toString();
+      emit backupChanged();
+      if (m_backupConfigId.isEmpty()) return;
+      QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
+      watchCall(this, backup.asyncCall(QStringLiteral("ListSnapshots"), m_backupConfigId),
+                [this](const QDBusMessage &snapshots) {
         if (snapshots.type() == QDBusMessage::ReplyMessage && !snapshots.arguments().isEmpty()) {
             const QDBusArgument array = qvariant_cast<QDBusArgument>(snapshots.arguments().first());
             array.beginArray();
@@ -550,8 +662,9 @@ void SystemBackend::refreshBackup(const QString &configId)
             }
             array.endArray();
         }
-    }
-    emit backupChanged();
+        emit backupChanged();
+      });
+    });
 }
 
 void SystemBackend::createBackupConfig(const QString &id, const QString &paths,
@@ -566,43 +679,60 @@ void SystemBackend::createBackupConfig(const QString &id, const QString &paths,
     config << id.trimmed() << pathList << destination.trimmed() << destinationUuid.trimmed() << frequency;
     config.endStructure();
     QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
-    const QDBusMessage reply = backup.call(QStringLiteral("CreateConfig"), QVariant::fromValue(config));
-    m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
-        ? tr("Configuração de backup criada.") : tr("Não foi possível criar a configuração.");
-    refreshBackup();
+    m_backupStatus = tr("Criando configuração de backup…");
+    emit backupChanged();
+    watchCall(this, backup.asyncCall(QStringLiteral("CreateConfig"), QVariant::fromValue(config)),
+              [this](const QDBusMessage &reply) {
+        m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
+            ? tr("Configuração de backup criada.") : tr("Não foi possível criar a configuração.");
+        refreshBackup();
+    });
 }
 
 void SystemBackend::deleteBackupConfig(const QString &id)
 {
     QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
-    const QDBusMessage reply = backup.call(QStringLiteral("DeleteConfig"), id);
-    if (reply.type() == QDBusMessage::ReplyMessage) {
-        m_backupConfigId.clear();
-        m_backupStatus = tr("Configuração removida.");
-    } else {
-        m_backupStatus = tr("Não foi possível remover a configuração.");
-    }
-    refreshBackup();
+    m_backupStatus = tr("Removendo configuração…");
+    emit backupChanged();
+    watchCall(this, backup.asyncCall(QStringLiteral("DeleteConfig"), id),
+              [this](const QDBusMessage &reply) {
+        if (reply.type() == QDBusMessage::ReplyMessage) {
+            m_backupConfigId.clear();
+            m_backupStatus = tr("Configuração removida.");
+        } else {
+            m_backupStatus = tr("Não foi possível remover a configuração.");
+        }
+        refreshBackup();
+    });
 }
 
 void SystemBackend::runBackup(const QString &id)
 {
     QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
-    const QDBusMessage reply = backup.call(QStringLiteral("RunBackupNow"), id);
     m_backupProgress = 0;
-    m_backupStatus = reply.type() == QDBusMessage::ReplyMessage ? tr("Backup iniciado.") : tr("Não foi possível iniciar o backup.");
+    m_backupStatus = tr("Iniciando backup…");
     emit backupChanged();
+    watchCall(this, backup.asyncCall(QStringLiteral("RunBackupNow"), id),
+              [this](const QDBusMessage &reply) {
+        m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
+            ? tr("Backup iniciado.") : tr("Não foi possível iniciar o backup.");
+        emit backupChanged();
+    });
 }
 
 void SystemBackend::restoreBackup(const QString &snapshotId, const QString &targetPath)
 {
     QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
-    const QDBusMessage reply = backup.call(QStringLiteral("RestoreSnapshot"), snapshotId,
-                                           targetPath.trimmed(), QStringLiteral("separate-folder"));
     m_backupProgress = 0;
-    m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
-        ? tr("Restauração iniciada em uma pasta separada.") : tr("Não foi possível iniciar a restauração.");
+    m_backupStatus = tr("Iniciando restauração…");
     emit backupChanged();
+    watchCall(this, backup.asyncCall(QStringLiteral("RestoreSnapshot"), snapshotId,
+                                     targetPath.trimmed(), QStringLiteral("separate-folder")),
+              [this](const QDBusMessage &reply) {
+        m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
+            ? tr("Restauração iniciada em uma pasta separada.") : tr("Não foi possível iniciar a restauração.");
+        emit backupChanged();
+    });
 }
 
 void SystemBackend::onBackupProgress(uint, uint percent, const QString &message)

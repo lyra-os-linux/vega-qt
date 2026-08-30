@@ -179,6 +179,9 @@ private:
     int m_backupProgress = 0;
     QVariantMap m_appearance;
     QString m_appearanceStatus;
+    quint64 m_refreshRequestId = 0;
+    quint64 m_softwareRequestId = 0;
+    quint64 m_searchRequestId = 0;
 
 private slots:
     void onTransactionProgress(uint transactionId, uint percent, const QString &message);

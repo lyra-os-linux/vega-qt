@@ -98,7 +98,7 @@ Kirigami.ApplicationWindow {
                     Layout.margins: Kirigami.Units.smallSpacing
                     Layout.bottomMargin: Kirigami.Units.largeSpacing
                     Image {
-                        source: "qrc:/vega.svg"
+                        source: "qrc:/packaging/vega.svg"
                         Layout.preferredWidth: 34; Layout.preferredHeight: 34
                         sourceSize.width: 68; sourceSize.height: 68
                         fillMode: Image.PreserveAspectFit
