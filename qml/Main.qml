@@ -328,7 +328,7 @@ Kirigami.ApplicationWindow {
             "Aplicativos, pacotes, repositórios e atualizações do sistema.",
             "Backups e pontos de restauração protegidos pelo vegad.",
             "Assistência contextual para administração do LyraOS.",
-            "Inventário de hardware, drivers, firmware e kernels instalados.",
+            "Inventário de hardware, firmware e kernels instalados.",
             "Fuso horário, sincronização, idioma e formatos regionais.",
             "Aparência, temas, ícones, wallpapers e comportamento do Plasma.",
             "Uso de CPU, memória, processos e saúde do sistema.",
