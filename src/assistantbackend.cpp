@@ -12,6 +12,7 @@
 #include <QUrlQuery>
 
 namespace {
+constexpr int RequestTimeoutMs = 30'000;
 const auto SystemPrompt = "Você é o Assistente do Lyra Vega, um centro de controle Linux. "
                           "Responda no idioma do usuário, seja conciso e seguro. Não afirme "
                           "ter alterado o sistema e nunca solicite senhas ou chaves.";
@@ -176,10 +177,26 @@ void AssistantBackend::sendMessage(const QString &text)
     request.setUrl(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     QNetworkReply *reply = m_network.post(request, QJsonDocument(requestBody()).toJson(QJsonDocument::Compact));
+    m_cancelRequested = false;
+    m_reply = reply;
+    auto *timer = new QTimer(reply);
+    timer->setSingleShot(true);
+    m_requestTimer = timer;
+    connect(timer, &QTimer::timeout, reply, [reply] { reply->abort(); });
+    timer->start(RequestTimeoutMs);
     connect(reply, &QNetworkReply::finished, this, [this, reply] {
+        if (m_reply == reply) {
+            m_reply = nullptr;
+            m_requestTimer = nullptr;
+        }
         const QByteArray payload = reply->readAll();
         const QJsonObject root = QJsonDocument::fromJson(payload).object();
-        if (reply->error() != QNetworkReply::NoError) {
+        if (m_cancelRequested) {
+            m_cancelRequested = false;
+            m_busy = false;
+            m_status = tr("Requisição cancelada.");
+            emit messagesChanged();
+        } else if (reply->error() != QNetworkReply::NoError) {
             const QString apiMessage = root.value("error").toObject().value("message").toString();
             finishWithError(apiMessage.isEmpty() ? reply->errorString() : apiMessage);
         } else {
@@ -193,6 +210,14 @@ void AssistantBackend::sendMessage(const QString &text)
         }
         reply->deleteLater();
     });
+}
+
+void AssistantBackend::cancelRequest()
+{
+    if (!m_reply)
+        return;
+    m_cancelRequested = true;
+    m_reply->abort();
 }
 
 void AssistantBackend::finishWithError(const QString &message)

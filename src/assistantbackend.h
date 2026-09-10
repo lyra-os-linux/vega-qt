@@ -3,6 +3,9 @@
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QVariantList>
+#include <QPointer>
+
+class QTimer;
 
 class AssistantBackend final : public QObject {
     Q_OBJECT
@@ -24,6 +27,7 @@ public:
 
     Q_INVOKABLE void configure(const QString &provider, const QString &model, const QString &apiKey);
     Q_INVOKABLE void sendMessage(const QString &text);
+    Q_INVOKABLE void cancelRequest();
     Q_INVOKABLE void clearConversation();
 
 signals:
@@ -45,4 +49,7 @@ private:
     QVariantList m_messages;
     bool m_busy = false;
     QString m_status;
+    QPointer<QNetworkReply> m_reply;
+    QPointer<QTimer> m_requestTimer;
+    bool m_cancelRequested = false;
 };

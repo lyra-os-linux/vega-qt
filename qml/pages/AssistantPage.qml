@@ -101,7 +101,7 @@ ColumnLayout {
             footer: Item {
                 width: conversation.width; height: assistantBackend.busy ? 46 : 0
                 RowLayout {
-                    visible: assistantBackend.busy; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                        visible: assistantBackend.busy; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                     Controls.BusyIndicator { running: true; implicitWidth: 24; implicitHeight: 24 }
                     Controls.Label { text: "Pensando…"; color: Kirigami.Theme.disabledTextColor }
                 }
@@ -153,7 +153,11 @@ ColumnLayout {
                 text: "Escreva uma mensagem…"; color: window.secondaryText
             }
         }
-        Controls.Button {
+            Controls.Button {
+                text: "Cancelar"; visible: assistantBackend.busy; enabled: assistantBackend.busy
+                onClicked: assistantBackend.cancelRequest()
+            }
+            Controls.Button {
             text: "Enviar"; icon.name: "document-send"; highlighted: true
             enabled: !assistantBackend.busy && messageField.text.trim().length > 0
             onClicked: root.send()
