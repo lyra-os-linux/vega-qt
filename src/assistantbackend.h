@@ -6,6 +6,7 @@
 #include <QPointer>
 
 class QTimer;
+class QNetworkReply;
 
 class AssistantBackend final : public QObject {
     Q_OBJECT
