@@ -231,15 +231,26 @@ static void startSoftwareTransaction(QObject *owner, const QString &method,
     });
 }
 
+void SystemBackend::adoptTransaction(uint id)
+{
+    m_transactionId = id;
+    if (id == 0) {
+        m_transactionMessage = tr("Não foi possível iniciar a operação");
+    } else if (m_earlyTransactionResults.contains(id)) {
+        const auto result = m_earlyTransactionResults.take(id);
+        onTransactionFinished(id, result.first, result.second);
+        return;
+    }
+    emit transactionChanged();
+}
+
 void SystemBackend::installPackage(const QString &origin, const QString &id)
 {
     m_transactionProgress = 0;
     m_transactionMessage = tr("Solicitando instalação…");
     emit transactionChanged();
     startSoftwareTransaction(this, QStringLiteral("Install"), {origin, id}, [this](uint id) {
-        m_transactionId = id;
-        m_transactionMessage = id ? tr("Instalação iniciada") : tr("Não foi possível iniciar a instalação");
-        emit transactionChanged();
+        adoptTransaction(id);
     });
 }
 
@@ -249,9 +260,7 @@ void SystemBackend::removePackage(const QString &origin, const QString &id)
     m_transactionMessage = tr("Solicitando remoção…");
     emit transactionChanged();
     startSoftwareTransaction(this, QStringLiteral("Remove"), {origin, id}, [this](uint id) {
-        m_transactionId = id;
-        m_transactionMessage = id ? tr("Remoção iniciada") : tr("Não foi possível iniciar a remoção");
-        emit transactionChanged();
+        adoptTransaction(id);
     });
 }
 
@@ -261,9 +270,7 @@ void SystemBackend::updateAll()
     m_transactionMessage = tr("Solicitando atualização…");
     emit transactionChanged();
     startSoftwareTransaction(this, QStringLiteral("UpdateAll"), {}, [this](uint id) {
-        m_transactionId = id;
-        m_transactionMessage = id ? tr("Atualização iniciada") : tr("Não foi possível iniciar a atualização");
-        emit transactionChanged();
+        adoptTransaction(id);
     });
 }
 
@@ -273,9 +280,7 @@ void SystemBackend::updatePackage(const QString &origin, const QString &id)
     m_transactionMessage = tr("Solicitando atualização…");
     emit transactionChanged();
     startSoftwareTransaction(this, QStringLiteral("UpdatePackage"), {origin, id}, [this](uint id) {
-        m_transactionId = id;
-        m_transactionMessage = id ? tr("Atualização iniciada") : tr("Não foi possível iniciar a atualização");
-        emit transactionChanged();
+        adoptTransaction(id);
     });
 }
 
@@ -298,8 +303,11 @@ void SystemBackend::onTransactionProgress(uint transactionId, uint percent, cons
 
 void SystemBackend::onTransactionFinished(uint transactionId, bool success, const QString &message)
 {
-    if (transactionId != m_transactionId)
+    if (transactionId != m_transactionId && m_transactionId != 0) {
+        if (m_earlyTransactionResults.size() < 64)
+            m_earlyTransactionResults.insert(transactionId, {success, message});
         return;
+    }
     m_transactionProgress = success ? 100 : 0;
     m_transactionMessage = message;
     m_transactionId = 0;

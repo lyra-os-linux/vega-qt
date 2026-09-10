@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QVariant>
+#include <QHash>
 
 class SystemBackend final : public QObject {
     Q_OBJECT
@@ -182,10 +183,14 @@ private:
     quint64 m_refreshRequestId = 0;
     quint64 m_softwareRequestId = 0;
     quint64 m_searchRequestId = 0;
+    // Finished signals can be delivered before the asynchronous start reply.
+    // Keep a bounded cache keyed by transaction ID until that reply arrives.
+    QHash<uint, QPair<bool, QString>> m_earlyTransactionResults;
 
 private slots:
     void onTransactionProgress(uint transactionId, uint percent, const QString &message);
     void onTransactionFinished(uint transactionId, bool success, const QString &message);
     void onBackupProgress(uint transactionId, uint percent, const QString &message);
     void onBackupFinished(uint transactionId, bool success, const QString &message);
+    void adoptTransaction(uint transactionId);
 };
