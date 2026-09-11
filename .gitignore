@@ -1,5 +1,6 @@
 # Qt / CMake
 /build/
+/build-tests/
 /cmake-build-*/
 CMakeCache.txt
 CMakeFiles/

@@ -1,0 +1,27 @@
+name: Contracts
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  assistant:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git cmake ninja-build g++ qt6-base-dev qt6-declarative-dev libkirigami-dev desktop-file-utils
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build and test real HTTP request lifecycle
+        run: |
+          cmake -S tests -B build-tests -G Ninja
+          cmake --build build-tests --parallel 2
+          ctest --test-dir build-tests --output-on-failure
+      - name: Build application and validate desktop entry
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel 2
+          desktop-file-validate packaging/org.lyraos.Vega.Qt.desktop

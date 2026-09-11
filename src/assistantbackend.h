@@ -19,6 +19,7 @@ class AssistantBackend final : public QObject {
 
 public:
     explicit AssistantBackend(QObject *parent = nullptr);
+    ~AssistantBackend() override;
     QString provider() const { return m_provider; }
     QString model() const { return m_model; }
     bool configured() const { return m_configured; }
@@ -36,14 +37,18 @@ signals:
     void messagesChanged();
 
 private:
+    friend class AssistantBackendTest;
+    AssistantBackend(QNetworkAccessManager *network, int timeoutMs, QObject *parent);
+    enum class Completion { Response, Timeout, Cancelled, Cleared };
+    void completeRequest(QNetworkReply *reply, Completion completion, const QString &provider = {});
     void checkConfiguredAsync();
     QString loadApiKey(const QString &provider) const;
     bool storeApiKey(const QString &provider, const QString &apiKey) const;
     QJsonObject requestBody() const;
-    QString responseText(const QJsonObject &root) const;
-    void finishWithError(const QString &message);
+    QString responseText(const QJsonObject &root, const QString &provider) const;
 
-    QNetworkAccessManager m_network;
+    QNetworkAccessManager *m_network;
+    int m_requestTimeoutMs;
     QString m_provider;
     QString m_model;
     bool m_configured = false;
@@ -52,5 +57,4 @@ private:
     QString m_status;
     QPointer<QNetworkReply> m_reply;
     QPointer<QTimer> m_requestTimer;
-    bool m_cancelRequested = false;
 };
