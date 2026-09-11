@@ -26,8 +26,8 @@ ColumnLayout {
                 color: Kirigami.Theme.disabledTextColor
             }
         }
-        Controls.Button { text: "Limpar"; icon.name: "edit-clear-history"; enabled: !assistantBackend.busy && assistantBackend.messages.length > 0; onClicked: assistantBackend.clearConversation() }
-        Controls.Button { text: "Configurar"; icon.name: "configure"; onClicked: settingsDialog.open() }
+        Controls.Button { text: "Limpar"; icon.name: "edit-clear-history"; enabled: assistantBackend.messages.length > 0; onClicked: assistantBackend.clearConversation() }
+        Controls.Button { text: "Configurar"; icon.name: "configure"; enabled: !assistantBackend.busy; onClicked: settingsDialog.open() }
     }
 
     function providerName(value) {
@@ -101,7 +101,7 @@ ColumnLayout {
             footer: Item {
                 width: conversation.width; height: assistantBackend.busy ? 46 : 0
                 RowLayout {
-                    visible: assistantBackend.busy; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                        visible: assistantBackend.busy; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                     Controls.BusyIndicator { running: true; implicitWidth: 24; implicitHeight: 24 }
                     Controls.Label { text: "Pensando…"; color: Kirigami.Theme.disabledTextColor }
                 }
@@ -152,6 +152,10 @@ ColumnLayout {
                 visible: messageField.text.length === 0 && !messageField.activeFocus
                 text: "Escreva uma mensagem…"; color: window.secondaryText
             }
+        }
+        Controls.Button {
+            text: qsTr("Cancelar"); visible: assistantBackend.busy; enabled: assistantBackend.busy
+            onClicked: assistantBackend.cancelRequest()
         }
         Controls.Button {
             text: "Enviar"; icon.name: "document-send"; highlighted: true

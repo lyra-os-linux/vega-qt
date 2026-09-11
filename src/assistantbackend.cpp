@@ -12,17 +12,36 @@
 #include <QUrlQuery>
 
 namespace {
+constexpr int RequestTimeoutMs = 30'000;
 const auto SystemPrompt = "Você é o Assistente do Lyra Vega, um centro de controle Linux. "
                           "Responda no idioma do usuário, seja conciso e seguro. Não afirme "
                           "ter alterado o sistema e nunca solicite senhas ou chaves.";
 }
 
-AssistantBackend::AssistantBackend(QObject *parent) : QObject(parent)
+AssistantBackend::AssistantBackend(QObject *parent)
+    : AssistantBackend(nullptr, RequestTimeoutMs, parent)
+{
+}
+
+AssistantBackend::AssistantBackend(QNetworkAccessManager *network, int timeoutMs, QObject *parent)
+    : QObject(parent), m_network(network ? network : new QNetworkAccessManager(this)),
+      m_requestTimeoutMs(timeoutMs)
 {
     QSettings settings;
     m_provider = settings.value(QStringLiteral("assistant/provider"), QStringLiteral("openai")).toString();
     m_model = settings.value(QStringLiteral("assistant/model"), QStringLiteral("gpt-4.1-mini")).toString();
     QTimer::singleShot(0, this, &AssistantBackend::checkConfiguredAsync);
+}
+
+AssistantBackend::~AssistantBackend()
+{
+    if (m_reply) {
+        disconnect(m_reply, nullptr, this, nullptr);
+        if (m_requestTimer)
+            m_requestTimer->stop();
+        m_reply->abort();
+        m_reply->deleteLater();
+    }
 }
 
 void AssistantBackend::checkConfiguredAsync()
@@ -81,6 +100,8 @@ bool AssistantBackend::storeApiKey(const QString &provider, const QString &apiKe
 
 void AssistantBackend::configure(const QString &provider, const QString &model, const QString &apiKey)
 {
+    if (m_busy)
+        return;
     const QString normalizedProvider = provider.trimmed().toLower();
     const QString normalizedModel = model.trimmed();
     if (normalizedModel.isEmpty() || (apiKey.trimmed().isEmpty() && loadApiKey(normalizedProvider).isEmpty())) {
@@ -135,11 +156,11 @@ QJsonObject AssistantBackend::requestBody() const
     return {{"model", m_model}, {"messages", messages}, {"max_tokens", 1200}};
 }
 
-QString AssistantBackend::responseText(const QJsonObject &root) const
+QString AssistantBackend::responseText(const QJsonObject &root, const QString &provider) const
 {
-    if (m_provider == QStringLiteral("anthropic"))
+    if (provider == QStringLiteral("anthropic"))
         return root.value("content").toArray().at(0).toObject().value("text").toString();
-    if (m_provider == QStringLiteral("gemini"))
+    if (provider == QStringLiteral("gemini"))
         return root.value("candidates").toArray().at(0).toObject().value("content").toObject()
             .value("parts").toArray().at(0).toObject().value("text").toString();
     return root.value("choices").toArray().at(0).toObject().value("message").toObject().value("content").toString();
@@ -158,7 +179,7 @@ void AssistantBackend::sendMessage(const QString &text)
         return;
     }
     m_messages.append(QVariantMap{{"role", "user"}, {"content", prompt}});
-    m_busy = true; m_status = tr("Pensando…"); emit messagesChanged();
+    m_busy = true; m_status = tr("Pensando…");
 
     QUrl url;
     QNetworkRequest request;
@@ -175,37 +196,85 @@ void AssistantBackend::sendMessage(const QString &text)
     }
     request.setUrl(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    QNetworkReply *reply = m_network.post(request, QJsonDocument(requestBody()).toJson(QJsonDocument::Compact));
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
-        const QByteArray payload = reply->readAll();
-        const QJsonObject root = QJsonDocument::fromJson(payload).object();
-        if (reply->error() != QNetworkReply::NoError) {
-            const QString apiMessage = root.value("error").toObject().value("message").toString();
-            finishWithError(apiMessage.isEmpty() ? reply->errorString() : apiMessage);
-        } else {
-            const QString answer = responseText(root).trimmed();
-            if (answer.isEmpty())
-                finishWithError(tr("O provedor retornou uma resposta vazia."));
-            else {
-                m_messages.append(QVariantMap{{"role", "assistant"}, {"content", answer}});
-                m_busy = false; m_status.clear(); emit messagesChanged();
-            }
-        }
-        reply->deleteLater();
+    // The independent precise timer is an absolute budget, including connection,
+    // upload and the complete response. Incoming trickles never reset it.
+    QNetworkReply *reply = m_network->post(request, QJsonDocument(requestBody()).toJson(QJsonDocument::Compact));
+    m_reply = reply;
+    auto *timer = new QTimer(reply);
+    timer->setSingleShot(true);
+    timer->setTimerType(Qt::PreciseTimer);
+    m_requestTimer = timer;
+    connect(timer, &QTimer::timeout, this, [this, reply] {
+        completeRequest(reply, Completion::Timeout);
     });
+    const QString provider = m_provider;
+    connect(reply, &QNetworkReply::finished, this, [this, reply, provider] {
+        completeRequest(reply, Completion::Response, provider);
+    });
+    timer->start(m_requestTimeoutMs);
+    // Publish busy only once cancellation is fully wired, including direct signal handlers.
+    emit messagesChanged();
 }
 
-void AssistantBackend::finishWithError(const QString &message)
+void AssistantBackend::completeRequest(QNetworkReply *reply, Completion completion, const QString &provider)
 {
+    if (m_reply != reply)
+        return;
+    // Detach the old request before abort(), which may synchronously emit finished.
+    // All state is finalized before messagesChanged permits a new request.
+    disconnect(reply, nullptr, this, nullptr);
+    if (m_requestTimer)
+        m_requestTimer->stop();
+    m_requestTimer = nullptr;
+    m_reply = nullptr;
     m_busy = false;
-    m_status = tr("Falha no provedor: %1").arg(message);
+
+    switch (completion) {
+    case Completion::Timeout:
+        m_status = tr("O provedor não concluiu a resposta no prazo. Tente novamente.");
+        break;
+    case Completion::Cancelled:
+        m_status = tr("Requisição cancelada.");
+        break;
+    case Completion::Cleared:
+        m_messages.clear();
+        m_status.clear();
+        break;
+    case Completion::Response: {
+        const QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
+        if (reply->error() != QNetworkReply::NoError) {
+            const QString apiMessage = root.value("error").toObject().value("message").toString();
+            m_status = tr("Falha no provedor: %1").arg(apiMessage.isEmpty() ? reply->errorString() : apiMessage);
+        } else {
+            const QString answer = responseText(root, provider).trimmed();
+            if (answer.isEmpty())
+                m_status = tr("Falha no provedor: %1").arg(tr("O provedor retornou uma resposta vazia."));
+            else {
+                m_messages.append(QVariantMap{{"role", "assistant"}, {"content", answer}});
+                m_status.clear();
+            }
+        }
+        break;
+    }
+    }
+    if (!reply->isFinished())
+        reply->abort();
+    reply->deleteLater();
     emit messagesChanged();
+}
+
+void AssistantBackend::cancelRequest()
+{
+    if (m_reply)
+        completeRequest(m_reply, Completion::Cancelled);
 }
 
 void AssistantBackend::clearConversation()
 {
-    if (m_busy)
+    if (m_reply) {
+        completeRequest(m_reply, Completion::Cleared);
         return;
+    }
     m_messages.clear();
     m_status.clear();
     emit messagesChanged();

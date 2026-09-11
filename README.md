@@ -42,3 +42,25 @@ continuam protegidas pelo Polkit através do `vegad`.
 
 Consulte [docs/testando.md](docs/testando.md) para o roteiro de validação e
 para saber quais informações incluir ao abrir um relato.
+
+### Prazo e cancelamento do assistente
+
+Cada chamada ao provedor tem um prazo total de 30 segundos, incluindo conexão,
+envio e resposta completa. Receber pequenos trechos não renova esse prazo.
+**Cancelar** interrompe a chamada; **Limpar** também interrompe uma chamada ativa
+antes de apagar a conversa. Sucesso, erro, timeout e cancelamento liberam o estado
+ocupado e os recursos de rede. Alterações de configuração ficam indisponíveis
+durante a chamada. Não há repetição automática da mensagem.
+
+A suíte abaixo usa HTTP real em loopback e um `secret-tool` fictício, sem acessar
+provedores ou chaves pessoais. Ela precisa apenas de Qt Core, Network e Test:
+
+```sh
+cmake -S tests -B build-tests -G Ninja
+cmake --build build-tests
+ctest --test-dir build-tests --output-on-failure
+```
+
+O CI também compila a aplicação Qt/Kirigami completa. Os testes cobrem respostas
+dos três provedores, servidor silencioso, resposta parcial, envio contínuo de
+pequenos trechos, cancelamento, limpeza, erros e destruição durante uma chamada.
