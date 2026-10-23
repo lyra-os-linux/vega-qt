@@ -268,7 +268,7 @@ private slots:
         backend.sendMessage("olá");
         QPointer<QNetworkReply> reply = network.lastReply;
         QTRY_VERIFY(!backend.busy());
-        QVERIFY(backend.status().startsWith("Falha no provedor:"));
+        QVERIFY(backend.status().startsWith("Provider error:"));
         QCOMPARE(backend.messages().size(), 1);
         QTRY_VERIFY(reply.isNull());
     }
