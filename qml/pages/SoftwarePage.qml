@@ -14,18 +14,18 @@ ColumnLayout {
         Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28; Layout.topMargin: 20
         ColumnLayout {
             Layout.fillWidth: true; spacing: 0
-            Kirigami.Heading { text: "Software"; level: 1 }
+            Kirigami.Heading { text: qsTr("Software"); level: 1 }
             Controls.Label { text: systemBackend.softwareStatus; color: window.secondaryText }
         }
-        Controls.Button { text: "Verificar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshSoftware() }
+        Controls.Button { text: qsTr("Check"); icon.name: "view-refresh"; onClicked: systemBackend.refreshSoftware() }
     }
 
     Controls.TabBar {
         id: tabs
         Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28
-        Controls.TabButton { text: "Explorar"; icon.name: "system-search" }
-        Controls.TabButton { text: "Atualizações (" + systemBackend.softwareUpdates.length + ")"; icon.name: "system-software-update" }
-        Controls.TabButton { text: "Repositórios"; icon.name: "network-server" }
+        Controls.TabButton { text: qsTr("Explore"); icon.name: "system-search" }
+        Controls.TabButton { text: qsTr("Updates (%1)").arg(systemBackend.softwareUpdates.length); icon.name: "system-software-update" }
+        Controls.TabButton { text: qsTr("Repositories"); icon.name: "network-server" }
     }
 
     StackLayout {
@@ -36,16 +36,16 @@ ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28
                 Controls.TextField {
-                    id: search; Layout.fillWidth: true; placeholderText: "Buscar pacote ou aplicativo…"
+                    id: search; Layout.fillWidth: true; placeholderText: qsTr("Search for a package or application…")
                     onAccepted: systemBackend.searchSoftware(text)
                 }
-                Controls.Button { text: "Buscar"; icon.name: "search"; enabled: search.text.trim().length >= 2 && !systemBackend.softwareBusy; onClicked: systemBackend.searchSoftware(search.text) }
+                Controls.Button { text: qsTr("Search"); icon.name: "search"; enabled: search.text.trim().length >= 2 && !systemBackend.softwareBusy; onClicked: systemBackend.searchSoftware(search.text) }
             }
             Controls.BusyIndicator { Layout.alignment: Qt.AlignHCenter; running: systemBackend.softwareBusy; visible: running }
             PackageList {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 model: systemBackend.softwareResults
-                emptyText: search.text.length < 2 ? "Digite ao menos dois caracteres" : "Nenhum pacote encontrado"
+                emptyText: search.text.length < 2 ? qsTr("Type at least two characters") : qsTr("No packages found")
                 onActionRequested: (item, action) => { page.pendingPackage = item; page.pendingAction = action; confirmDialog.open() }
             }
         }
@@ -53,12 +53,12 @@ ColumnLayout {
         ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28
-                Controls.Label { Layout.fillWidth: true; text: systemBackend.softwareUpdates.length === 0 ? "O sistema está atualizado" : "Atualizações disponíveis" }
-                Controls.Button { text: "Atualizar tudo"; icon.name: "system-software-update"; enabled: systemBackend.softwareUpdates.length > 0; onClicked: { page.pendingAction = "updateAll"; confirmDialog.open() } }
+                Controls.Label { Layout.fillWidth: true; text: systemBackend.softwareUpdates.length === 0 ? qsTr("The system is up to date") : qsTr("Updates available") }
+                Controls.Button { text: qsTr("Update all"); icon.name: "system-software-update"; enabled: systemBackend.softwareUpdates.length > 0; onClicked: { page.pendingAction = "updateAll"; confirmDialog.open() } }
             }
             PackageList {
                 Layout.fillWidth: true; Layout.fillHeight: true
-                model: systemBackend.softwareUpdates; emptyText: "Nenhuma atualização pendente"; updateMode: true
+                model: systemBackend.softwareUpdates; emptyText: qsTr("No pending updates"); updateMode: true
                 onActionRequested: (item, action) => { page.pendingPackage = item; page.pendingAction = action; confirmDialog.open() }
             }
         }
@@ -74,10 +74,10 @@ ColumnLayout {
                     contentItem: RowLayout {
                         Kirigami.Icon { source: "network-server"; implicitWidth: 28; implicitHeight: 28 }
                         Controls.Label { Layout.fillWidth: true; text: modelData.name; font.bold: true }
-                        Controls.Switch { text: modelData.enabled ? "Ativo" : "Inativo"; checked: modelData.enabled; onToggled: systemBackend.setRepositoryEnabled(modelData.name, checked) }
+                        Controls.Switch { text: modelData.enabled ? qsTr("Active") : qsTr("Inactive"); checked: modelData.enabled; onToggled: systemBackend.setRepositoryEnabled(modelData.name, checked) }
                     }
                 }
-                Kirigami.PlaceholderMessage { anchors.centerIn: parent; visible: systemBackend.repositories.length === 0; text: "Nenhum repositório retornado"; icon.name: "network-server" }
+                Kirigami.PlaceholderMessage { anchors.centerIn: parent; visible: systemBackend.repositories.length === 0; text: qsTr("No repositories returned"); icon.name: "network-server" }
             }
         }
     }
@@ -97,7 +97,7 @@ ColumnLayout {
     Controls.Dialog {
         id: confirmDialog
         anchors.centerIn: parent
-        title: page.pendingAction === "remove" ? "Remover pacote?" : "Confirmar alteração"
+        title: page.pendingAction === "remove" ? qsTr("Remove package?") : qsTr("Confirm change")
         standardButtons: Controls.Dialog.Ok | Controls.Dialog.Cancel
         modal: true
         onAccepted: {
@@ -106,7 +106,7 @@ ColumnLayout {
             else if (page.pendingAction === "update") systemBackend.updatePackage(page.pendingPackage.origin, page.pendingPackage.id)
             else systemBackend.installPackage(page.pendingPackage.origin, page.pendingPackage.id)
         }
-        Controls.Label { width: 380; wrapMode: Text.WordWrap; text: page.pendingAction === "updateAll" ? "Instalar todas as atualizações disponíveis?" : (page.pendingPackage ? (page.pendingAction === "remove" ? "Remover " : "Instalar ") + page.pendingPackage.name + "?" : "") }
+        Controls.Label { width: 380; wrapMode: Text.WordWrap; text: page.pendingAction === "updateAll" ? qsTr("Install all available updates?") : (page.pendingPackage ? (page.pendingAction === "remove" ? qsTr("Remove %1?") : qsTr("Install %1?")).arg(page.pendingPackage.name) : "") }
     }
 
     component PackageList: Item {
@@ -128,9 +128,9 @@ ColumnLayout {
                         Controls.Label { text: modelData.name || modelData.id; font.bold: true }
                         Controls.Label { Layout.fillWidth: true; text: modelData.description || modelData.repository || modelData.id; elide: Text.ElideRight; color: window.secondaryText }
                     }
-                    Controls.Label { text: modelData.origin === "flathub" ? "Flatpak" : (modelData.repository || "Oficial"); color: window.secondaryText }
+                    Controls.Label { text: modelData.origin === "flathub" ? "Flatpak" : (modelData.repository || qsTr("Official")); color: window.secondaryText }
                     Controls.Button {
-                        text: updateMode ? "Atualizar" : (modelData.installed ? "Remover" : "Instalar")
+                        text: updateMode ? qsTr("Update") : (modelData.installed ? qsTr("Remove") : qsTr("Install"))
                         icon.name: updateMode ? "system-software-update" : (modelData.installed ? "edit-delete" : "list-add")
                         onClicked: actionRequested(modelData, updateMode ? "update" : (modelData.installed ? "remove" : "install"))
                     }

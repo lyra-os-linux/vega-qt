@@ -9,15 +9,15 @@ ColumnLayout {
         ColumnLayout {
             Layout.fillWidth: true; spacing: 0
             Kirigami.Heading { text: "Bluetooth"; level: 1 }
-            Controls.Label { text: systemBackend.bluetoothStatus.controller || "Nenhum adaptador detectado"; color: window.secondaryText }
+            Controls.Label { text: systemBackend.bluetoothStatus.controller || qsTr("No adapter detected"); color: window.secondaryText }
         }
         Controls.Label {
             horizontalAlignment: Text.AlignRight
-            text: systemBackend.bluetoothStatus.powered ? "Ativado" : "Desativado"
+            text: systemBackend.bluetoothStatus.powered ? qsTr("On") : qsTr("Off")
             font.bold: true
             color: systemBackend.bluetoothStatus.powered ? Kirigami.Theme.positiveTextColor : window.secondaryText
         }
-        Controls.Button { text: "Atualizar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshBluetooth() }
+        Controls.Button { text: qsTr("Refresh"); icon.name: "view-refresh"; onClicked: systemBackend.refreshBluetooth() }
     }
     Controls.ScrollView {
         Layout.fillWidth: true; Layout.fillHeight: true; Layout.margins: 28; Layout.topMargin: 0
@@ -36,16 +36,16 @@ ColumnLayout {
                     }
                     ColumnLayout {
                         Layout.preferredWidth: 150
-                        Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: modelData.rssi ? modelData.rssi + " dBm" : "Sem sinal"; font.bold: true }
+                        Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: modelData.rssi ? qsTr("%1 dBm").arg(modelData.rssi) : qsTr("No signal"); font.bold: true }
                         Controls.Label {
                             Layout.fillWidth: true; horizontalAlignment: Text.AlignRight
-                            text: modelData.connected ? "Conectado" : (modelData.paired ? "Pareado" : "Disponível")
+                            text: modelData.connected ? qsTr("Connected") : (modelData.paired ? qsTr("Paired") : qsTr("Available"))
                             color: modelData.connected ? Kirigami.Theme.positiveTextColor : window.secondaryText
                         }
                     }
                 }
             }
-            Kirigami.PlaceholderMessage { anchors.centerIn: parent; visible: systemBackend.bluetoothDevices.length === 0; text: "Nenhum dispositivo encontrado"; icon.name: "bluetooth" }
+            Kirigami.PlaceholderMessage { anchors.centerIn: parent; visible: systemBackend.bluetoothDevices.length === 0; text: qsTr("No devices found"); icon.name: "bluetooth" }
         }
     }
 }

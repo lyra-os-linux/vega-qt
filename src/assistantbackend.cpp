@@ -13,9 +13,9 @@
 
 namespace {
 constexpr int RequestTimeoutMs = 30'000;
-const auto SystemPrompt = "Você é o Assistente do Lyra Vega, um centro de controle Linux. "
-                          "Responda no idioma do usuário, seja conciso e seguro. Não afirme "
-                          "ter alterado o sistema e nunca solicite senhas ou chaves.";
+const auto SystemPrompt = "You are the Lyra Vega Assistant, a Linux control center. "
+                          "Reply in the user's language and be concise and safe. Never claim "
+                          "to have changed the system and never ask for passwords or keys.";
 }
 
 AssistantBackend::AssistantBackend(QObject *parent)
@@ -88,7 +88,7 @@ bool AssistantBackend::storeApiKey(const QString &provider, const QString &apiKe
     if (executable.isEmpty())
         return false;
     QProcess process;
-    process.start(executable, {QStringLiteral("store"), QStringLiteral("--label=Vega Qt — Assistente de IA"),
+    process.start(executable, {QStringLiteral("store"), QStringLiteral("--label=") + tr("Vega Qt — AI Assistant"),
                                QStringLiteral("application"), QStringLiteral("vega-qt"),
                                QStringLiteral("provider"), provider});
     if (!process.waitForStarted(3000))
@@ -105,12 +105,12 @@ void AssistantBackend::configure(const QString &provider, const QString &model, 
     const QString normalizedProvider = provider.trimmed().toLower();
     const QString normalizedModel = model.trimmed();
     if (normalizedModel.isEmpty() || (apiKey.trimmed().isEmpty() && loadApiKey(normalizedProvider).isEmpty())) {
-        m_status = tr("Informe o modelo e a chave de API.");
+        m_status = tr("Enter the model and the API key.");
         emit messagesChanged();
         return;
     }
     if (!apiKey.trimmed().isEmpty() && !storeApiKey(normalizedProvider, apiKey.trimmed())) {
-        m_status = tr("Não foi possível salvar a chave no Secret Service.");
+        m_status = tr("Could not save the key in the Secret Service.");
         emit messagesChanged();
         return;
     }
@@ -174,12 +174,12 @@ void AssistantBackend::sendMessage(const QString &text)
     const QString apiKey = loadApiKey(m_provider);
     if (apiKey.isEmpty()) {
         m_configured = false;
-        m_status = tr("Configure uma chave de API para continuar.");
+        m_status = tr("Set up an API key to continue.");
         emit configurationChanged(); emit messagesChanged();
         return;
     }
     m_messages.append(QVariantMap{{"role", "user"}, {"content", prompt}});
-    m_busy = true; m_status = tr("Pensando…");
+    m_busy = true; m_status = tr("Thinking…");
 
     QUrl url;
     QNetworkRequest request;
@@ -231,10 +231,10 @@ void AssistantBackend::completeRequest(QNetworkReply *reply, Completion completi
 
     switch (completion) {
     case Completion::Timeout:
-        m_status = tr("O provedor não concluiu a resposta no prazo. Tente novamente.");
+        m_status = tr("The provider did not finish the response within the time limit. Try again.");
         break;
     case Completion::Cancelled:
-        m_status = tr("Requisição cancelada.");
+        m_status = tr("Request cancelled.");
         break;
     case Completion::Cleared:
         m_messages.clear();
@@ -244,11 +244,11 @@ void AssistantBackend::completeRequest(QNetworkReply *reply, Completion completi
         const QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
         if (reply->error() != QNetworkReply::NoError) {
             const QString apiMessage = root.value("error").toObject().value("message").toString();
-            m_status = tr("Falha no provedor: %1").arg(apiMessage.isEmpty() ? reply->errorString() : apiMessage);
+            m_status = tr("Provider error: %1").arg(apiMessage.isEmpty() ? reply->errorString() : apiMessage);
         } else {
             const QString answer = responseText(root, provider).trimmed();
             if (answer.isEmpty())
-                m_status = tr("Falha no provedor: %1").arg(tr("O provedor retornou uma resposta vazia."));
+                m_status = tr("Provider error: %1").arg(tr("The provider returned an empty response."));
             else {
                 m_messages.append(QVariantMap{{"role", "assistant"}, {"content", answer}});
                 m_status.clear();

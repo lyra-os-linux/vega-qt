@@ -6,6 +6,7 @@
 #include <QDBusReply>
 #include <QDateTime>
 #include <QFileInfo>
+#include <QLocale>
 #include <QProcess>
 #include <QSettings>
 #include <QStandardPaths>
@@ -19,6 +20,17 @@ namespace {
 constexpr auto Service = "org.lyraos.Vega1";
 constexpr auto ObjectPath = "/org/lyraos/Vega1";
 constexpr auto Interface = "org.lyraos.Vega1.System";
+
+// vegad localizes service and hardware labels itself; ask for the same
+// language the interface was translated to, with English as the fallback.
+QString daemonLocale()
+{
+    switch (QLocale().language()) {
+    case QLocale::Portuguese: return QStringLiteral("pt_BR");
+    case QLocale::Spanish: return QStringLiteral("es_ES");
+    default: return QStringLiteral("en_US");
+    }
+}
 
 QVariantList packageList(const QDBusMessage &reply)
 {
@@ -59,12 +71,12 @@ void watchCall(QObject *owner, const QDBusPendingCall &call,
 
 SystemBackend::SystemBackend(QObject *parent) : QObject(parent)
 {
-    m_status = tr("Carregando informações do sistema…");
-    m_version = tr("Aguardando vegad");
-    m_distro = tr("Lyra OS");
-    m_disk = tr("Carregando…");
-    m_packageManager = tr("Carregar ao abrir Software");
-    m_softwareStatus = tr("Abra esta seção para consultar atualizações.");
+    m_status = tr("Loading system information…");
+    m_version = tr("Waiting for vegad");
+    m_distro = QStringLiteral("Lyra OS");
+    m_disk = tr("Loading…");
+    m_packageManager = tr("Loaded when Software is opened");
+    m_softwareStatus = tr("Open this section to check for updates.");
     auto bus = QDBusConnection::systemBus();
     bus.connect(Service, ObjectPath, "org.lyraos.Vega1.Software", "TransactionProgress",
                 this, SLOT(onTransactionProgress(uint,uint,QString)));
@@ -85,43 +97,43 @@ void SystemBackend::refresh()
     QDBusInterface system(Service, ObjectPath, Interface, QDBusConnection::systemBus());
     if (!system.isValid()) {
         m_connected = false;
-        m_status = tr("vegad indisponível");
-        m_version = tr("Não conectado");
-        m_distro = tr("Aguardando o serviço do sistema");
+        m_status = tr("vegad unavailable");
+        m_version = tr("Not connected");
+        m_distro = tr("Waiting for the system service");
         m_disk.clear();
         m_diskPercent = 0;
         emit changed();
         return;
     }
     const quint64 requestId = ++m_refreshRequestId;
-    m_status = tr("Carregando informações do sistema…");
+    m_status = tr("Loading system information…");
     emit changed();
     watchCall(this, system.asyncCall(QStringLiteral("Ping")), [this, requestId](const QDBusMessage &reply) {
         if (requestId != m_refreshRequestId) return;
         m_connected = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
             && reply.arguments().first().toBool();
-        m_status = m_connected ? tr("Sistema conectado") : tr("Falha na comunicação");
+        m_status = m_connected ? tr("System connected") : tr("Communication failure");
         emit changed();
     });
     watchCall(this, system.asyncCall(QStringLiteral("Version")), [this, requestId](const QDBusMessage &reply) {
         if (requestId != m_refreshRequestId) return;
         m_version = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
-            ? reply.arguments().first().toString() : tr("Desconhecida");
+            ? reply.arguments().first().toString() : tr("Unknown");
         emit changed();
     });
     watchCall(this, system.asyncCall(QStringLiteral("Distro")), [this, requestId](const QDBusMessage &reply) {
         if (requestId != m_refreshRequestId) return;
         m_distro = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
-            ? reply.arguments().first().toString() : tr("Não detectada");
+            ? reply.arguments().first().toString() : tr("Not detected");
         emit changed();
     });
     watchCall(this, system.asyncCall(QStringLiteral("DiskUsage")), [this, requestId](const QDBusMessage &reply) {
         if (requestId != m_refreshRequestId) return;
         if (reply.type() == QDBusMessage::ReplyMessage && reply.arguments().size() == 3) {
-            m_disk = tr("%1 usados de %2").arg(reply.arguments().at(0).toString(), reply.arguments().at(1).toString());
+            m_disk = tr("%1 used of %2").arg(reply.arguments().at(0).toString(), reply.arguments().at(1).toString());
             m_diskPercent = static_cast<int>(reply.arguments().at(2).toUInt());
         } else {
-            m_disk = tr("Informação indisponível");
+            m_disk = tr("Information unavailable");
             m_diskPercent = 0;
         }
         emit changed();
@@ -137,20 +149,20 @@ void SystemBackend::refreshSoftware()
     QDBusInterface software(Service, ObjectPath, "org.lyraos.Vega1.Software",
                             QDBusConnection::systemBus());
     if (!software.isValid()) {
-        m_packageManager = tr("Indisponível");
-        m_softwareStatus = tr("O módulo Software do vegad não está disponível.");
+        m_packageManager = tr("Unavailable");
+        m_softwareStatus = tr("The vegad Software module is not available.");
         m_softwareBusy = false;
         emit softwareChanged();
         return;
     }
     const quint64 requestId = ++m_softwareRequestId;
-    m_softwareStatus = tr("Consultando atualizações…");
+    m_softwareStatus = tr("Checking for updates…");
     m_repositories.clear();
     emit softwareChanged();
     watchCall(this, software.asyncCall(QStringLiteral("PackageManagerName")), [this, requestId](const QDBusMessage &reply) {
         if (requestId != m_softwareRequestId) return;
         m_packageManager = reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()
-            ? reply.arguments().first().toString() : tr("Zypper");
+            ? reply.arguments().first().toString() : QStringLiteral("Zypper");
         emit softwareChanged();
     });
     watchCall(this, software.asyncCall(QStringLiteral("ListRepos")), [this, requestId](const QDBusMessage &reply) {
@@ -173,7 +185,7 @@ void SystemBackend::refreshSoftware()
         if (requestId != m_softwareRequestId) return;
         m_softwareUpdates = packageList(reply);
         if (!m_softwareUpdates.isEmpty()) {
-            m_softwareStatus = tr("%1 atualização(ões) disponível(is)").arg(m_softwareUpdates.size());
+            m_softwareStatus = tr("%n update(s) available", nullptr, int(m_softwareUpdates.size()));
             m_softwareBusy = false;
             emit softwareChanged();
             return;
@@ -183,9 +195,9 @@ void SystemBackend::refreshSoftware()
             if (requestId != m_softwareRequestId) return;
             m_softwareUpdates = packageList(native);
             m_softwareStatus = native.type() == QDBusMessage::ReplyMessage
-                ? (m_softwareUpdates.isEmpty() ? tr("Sistema atualizado")
-                   : tr("%1 atualização(ões) disponível(is)").arg(m_softwareUpdates.size()))
-                : tr("Não foi possível consultar atualizações.");
+                ? (m_softwareUpdates.isEmpty() ? tr("System up to date")
+                   : tr("%n update(s) available", nullptr, int(m_softwareUpdates.size())))
+                : tr("Could not check for updates.");
             m_softwareBusy = false;
             emit softwareChanged();
         });
@@ -235,7 +247,7 @@ void SystemBackend::adoptTransaction(uint id)
 {
     m_transactionId = id;
     if (id == 0) {
-        m_transactionMessage = tr("Não foi possível iniciar a operação");
+        m_transactionMessage = tr("Could not start the operation");
     } else if (m_earlyTransactionResults.contains(id)) {
         const auto result = m_earlyTransactionResults.take(id);
         onTransactionFinished(id, result.first, result.second);
@@ -247,7 +259,7 @@ void SystemBackend::adoptTransaction(uint id)
 void SystemBackend::installPackage(const QString &origin, const QString &id)
 {
     m_transactionProgress = 0;
-    m_transactionMessage = tr("Solicitando instalação…");
+    m_transactionMessage = tr("Requesting installation…");
     emit transactionChanged();
     startSoftwareTransaction(this, QStringLiteral("Install"), {origin, id}, [this](uint id) {
         adoptTransaction(id);
@@ -257,7 +269,7 @@ void SystemBackend::installPackage(const QString &origin, const QString &id)
 void SystemBackend::removePackage(const QString &origin, const QString &id)
 {
     m_transactionProgress = 0;
-    m_transactionMessage = tr("Solicitando remoção…");
+    m_transactionMessage = tr("Requesting removal…");
     emit transactionChanged();
     startSoftwareTransaction(this, QStringLiteral("Remove"), {origin, id}, [this](uint id) {
         adoptTransaction(id);
@@ -267,7 +279,7 @@ void SystemBackend::removePackage(const QString &origin, const QString &id)
 void SystemBackend::updateAll()
 {
     m_transactionProgress = 0;
-    m_transactionMessage = tr("Solicitando atualização…");
+    m_transactionMessage = tr("Requesting update…");
     emit transactionChanged();
     startSoftwareTransaction(this, QStringLiteral("UpdateAll"), {}, [this](uint id) {
         adoptTransaction(id);
@@ -277,7 +289,7 @@ void SystemBackend::updateAll()
 void SystemBackend::updatePackage(const QString &origin, const QString &id)
 {
     m_transactionProgress = 0;
-    m_transactionMessage = tr("Solicitando atualização…");
+    m_transactionMessage = tr("Requesting update…");
     emit transactionChanged();
     startSoftwareTransaction(this, QStringLiteral("UpdatePackage"), {origin, id}, [this](uint id) {
         adoptTransaction(id);
@@ -324,7 +336,7 @@ void SystemBackend::refreshServices(bool all)
     emit servicesChanged();
     watchCall(this, servicesInterface.asyncCall(all ? QStringLiteral("ListAllServicesLocalized")
                                                     : QStringLiteral("ListServicesLocalized"),
-                                                   QStringLiteral("pt_BR")), [this](const QDBusMessage &reply) {
+                                                   daemonLocale()), [this](const QDBusMessage &reply) {
       if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
         const QDBusArgument array = qvariant_cast<QDBusArgument>(reply.arguments().first());
         array.beginArray();
@@ -356,7 +368,7 @@ void SystemBackend::refreshHardware()
                             QDBusConnection::systemBus());
     emit hardwareChanged();
     watchCall(this, hardware.asyncCall(QStringLiteral("InventoryLocalized"),
-                                       QStringLiteral("pt_BR")), [this](const QDBusMessage &inventory) {
+                                       daemonLocale()), [this](const QDBusMessage &inventory) {
       if (inventory.type() == QDBusMessage::ReplyMessage && !inventory.arguments().isEmpty()) {
         const QDBusArgument data = qvariant_cast<QDBusArgument>(inventory.arguments().first());
         QString cpu, gpu, ram;
@@ -523,13 +535,13 @@ void SystemBackend::refreshBluetooth()
 void SystemBackend::queryLogs(const QString &unit, const QString &priority, const QString &search)
 {
     QDBusInterface logs(Service, ObjectPath, "org.lyraos.Vega1.Logs", QDBusConnection::systemBus());
-    m_logsStatus = tr("Consultando o log…");
+    m_logsStatus = tr("Querying the log…");
     emit logsChanged();
     watchCall(this, logs.asyncCall(QStringLiteral("ListUnits")),
               [this, unit, priority, search](const QDBusMessage &unitsReply) {
         if (unitsReply.type() != QDBusMessage::ReplyMessage || unitsReply.arguments().isEmpty()) {
             m_logsUnlocked = false;
-            m_logsStatus = tr("A autenticação administrativa foi cancelada ou recusada.");
+            m_logsStatus = tr("Administrative authentication was cancelled or denied.");
             m_logUnits.clear(); m_logLines.clear(); emit logsChanged(); return;
         }
         m_logUnits = unitsReply.arguments().first().toStringList();
@@ -539,12 +551,12 @@ void SystemBackend::queryLogs(const QString &unit, const QString &priority, cons
                   [this](const QDBusMessage &linesReply) {
             if (linesReply.type() != QDBusMessage::ReplyMessage || linesReply.arguments().isEmpty()) {
                 m_logsUnlocked = false;
-                m_logsStatus = tr("Não foi possível consultar o log administrativo.");
+                m_logsStatus = tr("Could not query the administrative log.");
                 m_logLines.clear(); emit logsChanged(); return;
             }
             m_logLines = linesReply.arguments().first().toStringList();
             m_logsUnlocked = true;
-            m_logsStatus = m_logLines.isEmpty() ? tr("Nenhuma entrada encontrada para os filtros atuais.") : QString{};
+            m_logsStatus = m_logLines.isEmpty() ? tr("No entries found for the current filters.") : QString{};
             emit logsChanged();
         });
     });
@@ -665,7 +677,7 @@ void SystemBackend::refreshBackup(const QString &configId)
                 QString id; qlonglong timestamp = 0; qulonglong files = 0, bytes = 0;
                 array.beginStructure(); array >> id >> timestamp >> files >> bytes; array.endStructure();
                 m_backupSnapshots.append(QVariantMap{{"id", id},
-                    {"date", QDateTime::fromSecsSinceEpoch(timestamp).toLocalTime().toString("dd/MM/yyyy HH:mm")},
+                    {"date", QLocale().toString(QDateTime::fromSecsSinceEpoch(timestamp).toLocalTime(), QLocale::ShortFormat)},
                     {"files", files}, {"bytes", bytes}});
             }
             array.endArray();
@@ -687,12 +699,12 @@ void SystemBackend::createBackupConfig(const QString &id, const QString &paths,
     config << id.trimmed() << pathList << destination.trimmed() << destinationUuid.trimmed() << frequency;
     config.endStructure();
     QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
-    m_backupStatus = tr("Criando configuração de backup…");
+    m_backupStatus = tr("Creating backup configuration…");
     emit backupChanged();
     watchCall(this, backup.asyncCall(QStringLiteral("CreateConfig"), QVariant::fromValue(config)),
               [this](const QDBusMessage &reply) {
         m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
-            ? tr("Configuração de backup criada.") : tr("Não foi possível criar a configuração.");
+            ? tr("Backup configuration created.") : tr("Could not create the configuration.");
         refreshBackup();
     });
 }
@@ -700,15 +712,15 @@ void SystemBackend::createBackupConfig(const QString &id, const QString &paths,
 void SystemBackend::deleteBackupConfig(const QString &id)
 {
     QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
-    m_backupStatus = tr("Removendo configuração…");
+    m_backupStatus = tr("Removing configuration…");
     emit backupChanged();
     watchCall(this, backup.asyncCall(QStringLiteral("DeleteConfig"), id),
               [this](const QDBusMessage &reply) {
         if (reply.type() == QDBusMessage::ReplyMessage) {
             m_backupConfigId.clear();
-            m_backupStatus = tr("Configuração removida.");
+            m_backupStatus = tr("Configuration removed.");
         } else {
-            m_backupStatus = tr("Não foi possível remover a configuração.");
+            m_backupStatus = tr("Could not remove the configuration.");
         }
         refreshBackup();
     });
@@ -718,12 +730,12 @@ void SystemBackend::runBackup(const QString &id)
 {
     QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
     m_backupProgress = 0;
-    m_backupStatus = tr("Iniciando backup…");
+    m_backupStatus = tr("Starting backup…");
     emit backupChanged();
     watchCall(this, backup.asyncCall(QStringLiteral("RunBackupNow"), id),
               [this](const QDBusMessage &reply) {
         m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
-            ? tr("Backup iniciado.") : tr("Não foi possível iniciar o backup.");
+            ? tr("Backup started.") : tr("Could not start the backup.");
         emit backupChanged();
     });
 }
@@ -732,13 +744,13 @@ void SystemBackend::restoreBackup(const QString &snapshotId, const QString &targ
 {
     QDBusInterface backup(Service, ObjectPath, "org.lyraos.Vega1.Backup", QDBusConnection::systemBus());
     m_backupProgress = 0;
-    m_backupStatus = tr("Iniciando restauração…");
+    m_backupStatus = tr("Starting restore…");
     emit backupChanged();
     watchCall(this, backup.asyncCall(QStringLiteral("RestoreSnapshot"), snapshotId,
                                      targetPath.trimmed(), QStringLiteral("separate-folder")),
               [this](const QDBusMessage &reply) {
         m_backupStatus = reply.type() == QDBusMessage::ReplyMessage
-            ? tr("Restauração iniciada em uma pasta separada.") : tr("Não foi possível iniciar a restauração.");
+            ? tr("Restore started in a separate folder.") : tr("Could not start the restore.");
         emit backupChanged();
     });
 }
@@ -764,14 +776,14 @@ void SystemBackend::refreshAppearance()
         + QStringLiteral("/kdeglobals");
     QSettings settings(configPath, QSettings::IniFormat);
     settings.beginGroup(QStringLiteral("KDE"));
-    const QString widgetStyle = settings.value(QStringLiteral("widgetStyle"), tr("Padrão do Plasma")).toString();
+    const QString widgetStyle = settings.value(QStringLiteral("widgetStyle"), tr("Plasma default")).toString();
     settings.endGroup();
     settings.beginGroup(QStringLiteral("General"));
-    const QString colorScheme = settings.value(QStringLiteral("ColorScheme"), tr("Padrão do Plasma")).toString();
-    const QString font = settings.value(QStringLiteral("font"), tr("Fonte do sistema")).toString().section(',', 0, 0);
+    const QString colorScheme = settings.value(QStringLiteral("ColorScheme"), tr("Plasma default")).toString();
+    const QString font = settings.value(QStringLiteral("font"), tr("System font")).toString().section(',', 0, 0);
     settings.endGroup();
     settings.beginGroup(QStringLiteral("Icons"));
-    const QString icons = settings.value(QStringLiteral("Theme"), tr("Padrão do Plasma")).toString();
+    const QString icons = settings.value(QStringLiteral("Theme"), tr("Plasma default")).toString();
     settings.endGroup();
     m_appearance = {{QStringLiteral("style"), widgetStyle},
                     {QStringLiteral("colors"), colorScheme},
@@ -784,12 +796,12 @@ void SystemBackend::openAppearanceModule(const QString &module)
 {
     const QString executable = QStandardPaths::findExecutable(QStringLiteral("kcmshell6"));
     if (executable.isEmpty()) {
-        m_appearanceStatus = tr("As Configurações do Sistema do Plasma não estão instaladas nesta sessão.");
+        m_appearanceStatus = tr("Plasma System Settings is not installed in this session.");
         emit appearanceChanged();
         return;
     }
     const bool started = QProcess::startDetached(executable, {module});
-    m_appearanceStatus = started ? QString{} : tr("Não foi possível abrir este módulo do Plasma.");
+    m_appearanceStatus = started ? QString{} : tr("Could not open this Plasma module.");
     emit appearanceChanged();
 }
 

@@ -15,7 +15,23 @@ cmake --build build
 ```
 
 Dependências: `qt6-base-devel`, `qt6-declarative-devel`,
-`kf6-kirigami-devel`, `cmake` e `ninja`.
+`qt6-linguist-devel`, `kf6-kirigami-devel`, `cmake` e `ninja`.
+
+## Traduções
+
+O idioma-fonte e o fallback são o inglês (en-US). Os catálogos pt-BR e es-ES
+ficam em `translations/` e são embutidos no `vega-qt` e no notificador de
+atualizações. Qualquer variante de português usa pt-BR, e qualquer variante de
+espanhol usa es-ES. Toda string visível usa `qsTr()` no QML ou `tr()` no C++.
+
+Depois de alterar textos, atualize os catálogos e confira se nada ficou sem
+tradução:
+
+```sh
+lupdate -locations relative -no-obsolete src qml \
+  -ts translations/vega-qt_pt_BR.ts translations/vega-qt_es_ES.ts
+scripts/check-translations.sh
+```
 
 ## Instalação no openSUSE
 

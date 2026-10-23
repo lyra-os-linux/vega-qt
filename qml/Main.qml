@@ -62,20 +62,20 @@ Kirigami.ApplicationWindow {
 
     ListModel {
         id: navigationModel
-        ListElement { label: "Painel"; section: "Principal"; iconName: "preferences-system" }
-        ListElement { label: "Software"; section: "Principal"; iconName: "system-software-install" }
-        ListElement { label: "Backup"; section: "Principal"; iconName: "document-save" }
-        ListElement { label: "Assistente de IA"; section: "Principal"; iconName: "system-search" }
-        ListElement { label: "Hardware e Kernel"; section: "Sistema"; iconName: "computer" }
-        ListElement { label: "Data, Hora e Idioma"; section: "Sistema"; iconName: "preferences-system-time" }
-        ListElement { label: "Personalização"; section: "Sistema"; iconName: "preferences-desktop" }
-        ListElement { label: "Monitor do Sistema"; section: "Sistema"; iconName: "utilities-system-monitor" }
-        ListElement { label: "Armazenamento"; section: "Sistema"; iconName: "drive-harddisk" }
-        ListElement { label: "Rede e Firewall"; section: "Sistema"; iconName: "network-wireless" }
-        ListElement { label: "Bluetooth"; section: "Sistema"; iconName: "bluetooth" }
-        ListElement { label: "Serviços"; section: "Sistema"; iconName: "system-run" }
-        ListElement { label: "Usuários"; section: "Sistema"; iconName: "system-users" }
-        ListElement { label: "Log do Sistema"; section: "Sistema"; iconName: "logviewer" }
+        ListElement { label: qsTr("Dashboard"); section: qsTr("Main"); iconName: "preferences-system" }
+        ListElement { label: qsTr("Software"); section: qsTr("Main"); iconName: "system-software-install" }
+        ListElement { label: qsTr("Backup"); section: qsTr("Main"); iconName: "document-save" }
+        ListElement { label: qsTr("AI Assistant"); section: qsTr("Main"); iconName: "system-search" }
+        ListElement { label: qsTr("Hardware and Kernel"); section: qsTr("System"); iconName: "computer" }
+        ListElement { label: qsTr("Date, Time and Language"); section: qsTr("System"); iconName: "preferences-system-time" }
+        ListElement { label: qsTr("Personalization"); section: qsTr("System"); iconName: "preferences-desktop" }
+        ListElement { label: qsTr("System Monitor"); section: qsTr("System"); iconName: "utilities-system-monitor" }
+        ListElement { label: qsTr("Storage"); section: qsTr("System"); iconName: "drive-harddisk" }
+        ListElement { label: qsTr("Network and Firewall"); section: qsTr("System"); iconName: "network-wireless" }
+        ListElement { label: qsTr("Bluetooth"); section: qsTr("System"); iconName: "bluetooth" }
+        ListElement { label: qsTr("Services"); section: qsTr("System"); iconName: "system-run" }
+        ListElement { label: qsTr("Users"); section: qsTr("System"); iconName: "system-users" }
+        ListElement { label: qsTr("System Log"); section: qsTr("System"); iconName: "logviewer" }
     }
 
     RowLayout {
@@ -113,7 +113,7 @@ Kirigami.ApplicationWindow {
 
                 Controls.TextField {
                     Layout.fillWidth: true
-                    placeholderText: "Buscar configuração…"
+                    placeholderText: qsTr("Search settings…")
                     color: window.primaryText
                     placeholderTextColor: window.secondaryText
                     leftPadding: 34
@@ -197,12 +197,12 @@ Kirigami.ApplicationWindow {
                     }
                     Item { Layout.fillWidth: true }
                     Controls.ToolButton {
-                        icon.name: "view-refresh"; text: "Atualizar"; display: Controls.AbstractButton.IconOnly
+                        icon.name: "view-refresh"; text: qsTr("Refresh"); display: Controls.AbstractButton.IconOnly
                         onClicked: systemBackend.refresh()
                     }
                     Controls.ToolButton {
                         icon.name: window.darkMode ? "weather-clear" : "weather-clear-night"
-                        text: window.darkMode ? "Usar tema claro" : "Usar tema escuro"
+                        text: window.darkMode ? qsTr("Use light theme") : qsTr("Use dark theme")
                         display: Controls.AbstractButton.IconOnly
                         onClicked: {
                             window.darkMode = !window.darkMode
@@ -222,10 +222,10 @@ Kirigami.ApplicationWindow {
                 ColumnLayout {
                     width: parent.width
                     spacing: Kirigami.Units.largeSpacing
-                    Kirigami.Heading { Layout.margins: 28; Layout.bottomMargin: 0; text: "Central de Controle"; level: 1 }
+                    Kirigami.Heading { Layout.margins: 28; Layout.bottomMargin: 0; text: qsTr("Control Center"); level: 1 }
                     Controls.Label {
                         Layout.leftMargin: 28
-                        text: "Administração do LyraOS integrada ao Plasma"
+                        text: qsTr("LyraOS administration integrated with Plasma")
                         color: window.secondaryText
                     }
                     Rectangle {
@@ -240,7 +240,7 @@ Kirigami.ApplicationWindow {
                             ColumnLayout {
                                 Controls.Label { text: systemBackend.status; font.bold: true }
                                 Controls.Label {
-                                    text: systemBackend.connected ? "vegad " + systemBackend.version : "Instale ou inicie o serviço vegad"
+                                    text: systemBackend.connected ? "vegad " + systemBackend.version : qsTr("Install or start the vegad service")
                                     color: window.secondaryText
                                 }
                             }
@@ -250,12 +250,12 @@ Kirigami.ApplicationWindow {
                         Layout.fillWidth: true; Layout.margins: 28; Layout.topMargin: 0
                         columns: width > 760 ? 3 : 2
                         columnSpacing: Kirigami.Units.largeSpacing; rowSpacing: Kirigami.Units.largeSpacing
-                        DashboardCard { title: "Sistema"; value: systemBackend.distro; iconName: "computer" }
-                        DashboardCard { title: "Armazenamento"; value: systemBackend.disk; detail: systemBackend.diskPercent > 0 ? systemBackend.diskPercent + "% em uso" : ""; iconName: "drive-harddisk" }
-                        DashboardCard { title: "Atualizações"; value: "Pronto para verificar"; detail: "Zypper e Flatpak"; iconName: "system-software-update" }
-                        DashboardCard { title: "Serviços"; value: "Monitoramento"; detail: "Systemd"; iconName: "system-run" }
-                        DashboardCard { title: "Backup"; value: "Não configurado"; detail: "Restic"; iconName: "document-save" }
-                        DashboardCard { title: "Segurança"; value: "Firewall"; detail: "Políticas do sistema"; iconName: "security-high" }
+                        DashboardCard { title: qsTr("System"); value: systemBackend.distro; iconName: "computer" }
+                        DashboardCard { title: qsTr("Storage"); value: systemBackend.disk; detail: systemBackend.diskPercent > 0 ? qsTr("%1% in use").arg(systemBackend.diskPercent) : ""; iconName: "drive-harddisk" }
+                        DashboardCard { title: qsTr("Updates"); value: qsTr("Ready to check"); detail: qsTr("Zypper and Flatpak"); iconName: "system-software-update" }
+                        DashboardCard { title: qsTr("Services"); value: qsTr("Monitoring"); detail: "Systemd"; iconName: "system-run" }
+                        DashboardCard { title: qsTr("Backup"); value: qsTr("Not configured"); detail: "Restic"; iconName: "document-save" }
+                        DashboardCard { title: qsTr("Security"); value: qsTr("Firewall"); detail: qsTr("System policies"); iconName: "security-high" }
                     }
                 }
             }
@@ -324,22 +324,22 @@ Kirigami.ApplicationWindow {
 
     function moduleDescription(page) {
         const descriptions = [
-            "Visão geral do sistema",
-            "Aplicativos, pacotes, repositórios e atualizações do sistema.",
-            "Backups e pontos de restauração protegidos pelo vegad.",
-            "Assistência contextual para administração do LyraOS.",
-            "Inventário de hardware, firmware e kernels instalados.",
-            "Fuso horário, sincronização, idioma e formatos regionais.",
-            "Aparência, temas, ícones, wallpapers e comportamento do Plasma.",
-            "Uso de CPU, memória, processos e saúde do sistema.",
-            "Discos, partições, volumes e sistemas de arquivos.",
-            "Conexões, Wi-Fi, VPN, proxy e regras de firewall.",
-            "Adaptadores e dispositivos Bluetooth.",
-            "Serviços systemd e seu estado operacional.",
-            "Contas locais, grupos e permissões.",
-            "Eventos e diagnóstico do journal do sistema."
+            qsTr("System overview"),
+            qsTr("Applications, packages, repositories and system updates."),
+            qsTr("Backups and restore points protected by vegad."),
+            qsTr("Contextual help for LyraOS administration."),
+            qsTr("Inventory of hardware, firmware and installed kernels."),
+            qsTr("Time zone, synchronization, language and regional formats."),
+            qsTr("Appearance, themes, icons, wallpapers and Plasma behavior."),
+            qsTr("CPU and memory usage, processes and system health."),
+            qsTr("Disks, partitions, volumes and file systems."),
+            qsTr("Connections, Wi-Fi, VPN, proxy and firewall rules."),
+            qsTr("Bluetooth adapters and devices."),
+            qsTr("systemd services and their operational state."),
+            qsTr("Local accounts, groups and permissions."),
+            qsTr("System journal events and diagnostics.")
         ]
-        return descriptions[page] || "Configuração do sistema"
+        return descriptions[page] || qsTr("System settings")
     }
 
     function loadPage(page) {

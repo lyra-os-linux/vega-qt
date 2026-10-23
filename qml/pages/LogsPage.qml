@@ -7,15 +7,15 @@ ColumnLayout {
     id: root
     RowLayout {
         Layout.fillWidth: true; Layout.margins: 28; Layout.bottomMargin: 0
-        Kirigami.Heading { Layout.fillWidth: true; text: "Log do Sistema"; level: 1 }
+        Kirigami.Heading { Layout.fillWidth: true; text: qsTr("System Log"); level: 1 }
         Controls.ComboBox { id: priority; visible: systemBackend.logsUnlocked; model: ["", "err", "warning", "info"]; Layout.preferredWidth: 130 }
-        Controls.Button { visible: systemBackend.logsUnlocked; text: "Consultar"; icon.name: "view-refresh"; onClicked: systemBackend.queryLogs(unit.currentText === "Todos" ? "" : unit.currentText, priority.currentText, search.text) }
+        Controls.Button { visible: systemBackend.logsUnlocked; text: qsTr("Query"); icon.name: "view-refresh"; onClicked: systemBackend.queryLogs(unit.currentIndex === 0 ? "" : unit.currentText, priority.currentText, search.text) }
     }
     RowLayout {
         visible: systemBackend.logsUnlocked
         Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28
-        Controls.ComboBox { id: unit; model: ["Todos"].concat(systemBackend.logUnits); Layout.preferredWidth: 260 }
-        Controls.TextField { id: search; Layout.fillWidth: true; placeholderText: "Buscar no journal…"; onAccepted: systemBackend.queryLogs(unit.currentText === "Todos" ? "" : unit.currentText, priority.currentText, text) }
+        Controls.ComboBox { id: unit; model: [qsTr("All")].concat(systemBackend.logUnits); Layout.preferredWidth: 260 }
+        Controls.TextField { id: search; Layout.fillWidth: true; placeholderText: qsTr("Search the journal…"); onAccepted: systemBackend.queryLogs(unit.currentIndex === 0 ? "" : unit.currentText, priority.currentText, text) }
     }
     Rectangle {
         visible: systemBackend.logsUnlocked
@@ -57,13 +57,13 @@ ColumnLayout {
             }
             Kirigami.Heading {
                 Layout.fillWidth: true
-                text: "Acesso administrativo necessário"
+                text: qsTr("Administrative access required")
                 level: 2
                 horizontalAlignment: Text.AlignHCenter
             }
             Controls.Label {
                 Layout.fillWidth: true
-                text: "Os registros do sistema podem conter informações sensíveis. Autentique-se como administrador para consultá-los."
+                text: qsTr("System logs may contain sensitive information. Authenticate as an administrator to view them.")
                 color: Kirigami.Theme.disabledTextColor
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -78,7 +78,7 @@ ColumnLayout {
             }
             Controls.Button {
                 Layout.alignment: Qt.AlignHCenter
-                text: "Autenticar e consultar logs"
+                text: qsTr("Authenticate and view logs")
                 icon.name: "document-decrypt"
                 highlighted: true
                 onClicked: systemBackend.queryLogs("", "", "")

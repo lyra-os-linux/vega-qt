@@ -13,6 +13,7 @@ BuildRequires:  qt6-core-devel >= 6.6
 BuildRequires:  qt6-qml-devel >= 6.6
 BuildRequires:  qt6-dbus-devel >= 6.6
 BuildRequires:  qt6-network-devel >= 6.6
+BuildRequires:  qt6-linguist-devel >= 6.6
 BuildRequires:  kf6-kirigami-devel
 BuildRequires:  hicolor-icon-theme
 Requires:       vegad

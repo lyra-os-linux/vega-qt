@@ -33,7 +33,7 @@ Controls.ScrollView {
                 Controls.Label { Layout.fillWidth: true; text: value; color: window.lyraBlue; font.bold: true; elide: Text.ElideRight }
             }
             Controls.ToolButton {
-                icon.name: "go-next"; text: "Configurar"; display: Controls.AbstractButton.IconOnly
+                icon.name: "go-next"; text: qsTr("Configure"); display: Controls.AbstractButton.IconOnly
                 onClicked: systemBackend.openAppearanceModule(moduleName)
             }
         }
@@ -51,10 +51,10 @@ Controls.ScrollView {
             Layout.fillWidth: true; Layout.margins: 28; Layout.bottomMargin: 0
             ColumnLayout {
                 Layout.fillWidth: true; spacing: 2
-                Kirigami.Heading { text: "Personalização"; level: 1 }
-                Controls.Label { text: "Ajuste a aparência e o comportamento do Plasma"; color: window.secondaryText }
+                Kirigami.Heading { text: qsTr("Personalization"); level: 1 }
+                Controls.Label { text: qsTr("Adjust Plasma appearance and behavior"); color: window.secondaryText }
             }
-            Controls.Button { text: "Atualizar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshAppearance() }
+            Controls.Button { text: qsTr("Refresh"); icon.name: "view-refresh"; onClicked: systemBackend.refreshAppearance() }
         }
 
         Rectangle {
@@ -76,36 +76,36 @@ Controls.ScrollView {
             columnSpacing: Kirigami.Units.largeSpacing; rowSpacing: Kirigami.Units.largeSpacing
 
             AppearanceCard {
-                title: "Tema global"; description: "Aparência completa do ambiente, painéis e área de trabalho"
-                value: systemBackend.appearance.style || "Carregando…"; iconName: "preferences-desktop"; moduleName: "kcm_lookandfeel"
+                title: qsTr("Global theme"); description: qsTr("Complete look of the environment, panels and desktop")
+                value: systemBackend.appearance.style || qsTr("Loading…"); iconName: "preferences-desktop"; moduleName: "kcm_lookandfeel"
             }
             AppearanceCard {
-                title: "Cores"; description: "Paleta usada por janelas, textos e elementos de interface"
-                value: systemBackend.appearance.colors || "Carregando…"; iconName: "preferences-desktop-color"; moduleName: "kcm_colors"
+                title: qsTr("Colors"); description: qsTr("Palette used by windows, text and interface elements")
+                value: systemBackend.appearance.colors || qsTr("Loading…"); iconName: "preferences-desktop-color"; moduleName: "kcm_colors"
             }
             AppearanceCard {
-                title: "Ícones"; description: "Conjunto de ícones dos aplicativos e do sistema"
-                value: systemBackend.appearance.icons || "Carregando…"; iconName: "preferences-desktop-icons"; moduleName: "kcm_icons"
+                title: qsTr("Icons"); description: qsTr("Icon set for applications and the system")
+                value: systemBackend.appearance.icons || qsTr("Loading…"); iconName: "preferences-desktop-icons"; moduleName: "kcm_icons"
             }
             AppearanceCard {
-                title: "Fontes"; description: "Família, tamanho e renderização dos textos"
-                value: systemBackend.appearance.font || "Carregando…"; iconName: "preferences-desktop-font"; moduleName: "kcm_fonts"
+                title: qsTr("Fonts"); description: qsTr("Typeface, size and text rendering")
+                value: systemBackend.appearance.font || qsTr("Loading…"); iconName: "preferences-desktop-font"; moduleName: "kcm_fonts"
             }
             AppearanceCard {
-                title: "Cursores"; description: "Tema e tamanho do ponteiro do mouse"
-                value: "Configurar no Plasma"; iconName: "input-mouse"; moduleName: "kcm_cursortheme"
+                title: qsTr("Cursors"); description: qsTr("Mouse pointer theme and size")
+                value: qsTr("Configure in Plasma"); iconName: "input-mouse"; moduleName: "kcm_cursortheme"
             }
             AppearanceCard {
-                title: "Decoração das janelas"; description: "Bordas, botões e estilo das janelas"
-                value: "Configurar no Plasma"; iconName: "preferences-system-windows"; moduleName: "kcm_kwindecoration"
+                title: qsTr("Window decorations"); description: qsTr("Window borders, buttons and style")
+                value: qsTr("Configure in Plasma"); iconName: "preferences-system-windows"; moduleName: "kcm_kwindecoration"
             }
             AppearanceCard {
-                title: "Papel de parede"; description: "Imagem e comportamento do plano de fundo"
-                value: "Configurar no Plasma"; iconName: "preferences-desktop-wallpaper"; moduleName: "kcm_wallpaper"
+                title: qsTr("Wallpaper"); description: qsTr("Background image and behavior")
+                value: qsTr("Configure in Plasma"); iconName: "preferences-desktop-wallpaper"; moduleName: "kcm_wallpaper"
             }
             AppearanceCard {
-                title: "Tela de bloqueio"; description: "Visual e opções da tela de bloqueio"
-                value: "Configurar no Plasma"; iconName: "system-lock-screen"; moduleName: "kcm_screenlocker"
+                title: qsTr("Lock screen"); description: qsTr("Lock screen look and options")
+                value: qsTr("Configure in Plasma"); iconName: "system-lock-screen"; moduleName: "kcm_screenlocker"
             }
         }
         Item { implicitHeight: 12 }

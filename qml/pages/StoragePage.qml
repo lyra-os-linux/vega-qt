@@ -7,8 +7,8 @@ import "../components"
 ColumnLayout {
     RowLayout {
         Layout.fillWidth: true; Layout.margins: 28; Layout.bottomMargin: 0
-        Kirigami.Heading { Layout.fillWidth: true; text: "Armazenamento"; level: 1 }
-        Controls.Button { text: "Atualizar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshStorage() }
+        Kirigami.Heading { Layout.fillWidth: true; text: qsTr("Storage"); level: 1 }
+        Controls.Button { text: qsTr("Refresh"); icon.name: "view-refresh"; onClicked: systemBackend.refreshStorage() }
     }
     Controls.ScrollView {
         Layout.fillWidth: true; Layout.fillHeight: true; Layout.margins: 28; Layout.topMargin: 0
@@ -23,7 +23,7 @@ ColumnLayout {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Controls.Label { text: modelData.name || modelData.path; font.bold: true }
-                        Controls.Label { text: (modelData.model || modelData.fsType) + "  •  " + (modelData.mountpoint || "Não montado"); color: window.secondaryText }
+                        Controls.Label { text: (modelData.model || modelData.fsType) + "  •  " + (modelData.mountpoint || qsTr("Not mounted")); color: window.secondaryText }
                         LyraProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: modelData.percent }
                     }
                     ColumnLayout {
