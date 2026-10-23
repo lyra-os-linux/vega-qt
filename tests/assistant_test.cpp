@@ -167,7 +167,7 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!backend.busy(), 2000);
         QVERIFY(elapsed.elapsed() >= 300);
         QVERIFY(elapsed.elapsed() < 2000);
-        QVERIFY(backend.status().contains("prazo"));
+        QVERIFY(backend.status().contains("time limit"));
         QVERIFY(!backend.status().contains("fake-test-key"));
         QCOMPARE(backend.messages().size(), 1);
         if (mode != HttpPeer::Silent)
@@ -198,7 +198,7 @@ private slots:
         QSignalSpy changes(&backend, &AssistantBackend::messagesChanged);
         backend.cancelRequest();
         QVERIFY(!backend.busy());
-        QVERIFY(backend.status().contains("cancelada"));
+        QVERIFY(backend.status().contains("cancelled"));
         QCOMPARE(changes.count(), 1);
         QVERIFY(!oldTimer->isActive());
         peer.mode = HttpPeer::Complete;
@@ -224,7 +224,7 @@ private slots:
         });
         backend.sendMessage("olá");
         QVERIFY(!backend.busy());
-        QVERIFY(backend.status().contains("cancelada"));
+        QVERIFY(backend.status().contains("cancelled"));
     }
 
     void clearWhileBusy()
@@ -268,7 +268,7 @@ private slots:
         backend.sendMessage("olá");
         QPointer<QNetworkReply> reply = network.lastReply;
         QTRY_VERIFY(!backend.busy());
-        QVERIFY(backend.status().startsWith("Falha no provedor:"));
+        QVERIFY(backend.status().startsWith("Provider error:"));
         QCOMPARE(backend.messages().size(), 1);
         QTRY_VERIFY(reply.isNull());
     }

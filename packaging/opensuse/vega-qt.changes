@@ -1,4 +1,14 @@
 -------------------------------------------------------------------
+Fri Oct 23 2026 - Rodrigo Brito <rodrigo@lyraos.com.br>
+
+- Translate the interface: English is the source language and fallback,
+  with pt-BR and es-ES catalogs embedded in vega-qt and the update notifier.
+- Ask vegad for service and hardware labels in the interface language
+  instead of always requesting pt_BR.
+- Format backup dates with the user locale.
+- Translate the desktop entries.
+
+-------------------------------------------------------------------
 Sun Aug 30 2026 - Rodrigo Brito <rodrigo@lyraos.com.br>
 
 - Keep the interface responsive while vegad serves system data and actions.

@@ -1,5 +1,6 @@
 #include "systembackend.h"
 #include "assistantbackend.h"
+#include "translations.h"
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -8,6 +9,7 @@
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+    installVegaTranslations(app);
     QGuiApplication::setOrganizationName(QStringLiteral("LyraOS"));
     QGuiApplication::setApplicationName(QStringLiteral("Vega Qt"));
     QGuiApplication::setDesktopFileName(QStringLiteral("org.lyraos.Vega.Qt"));

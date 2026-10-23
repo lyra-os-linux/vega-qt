@@ -6,14 +6,14 @@ import org.kde.kirigami as Kirigami
 ColumnLayout {
     RowLayout {
         Layout.fillWidth: true; Layout.margins: 28; Layout.bottomMargin: 0
-        Kirigami.Heading { Layout.fillWidth: true; text: "Rede e Firewall"; level: 1 }
-        Controls.Button { text: "Atualizar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshNetwork() }
+        Kirigami.Heading { Layout.fillWidth: true; text: qsTr("Network and Firewall"); level: 1 }
+        Controls.Button { text: qsTr("Refresh"); icon.name: "view-refresh"; onClicked: systemBackend.refreshNetwork() }
     }
     Controls.TabBar {
         id: tabs; Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28
-        Controls.TabButton { text: "Interfaces" }
-        Controls.TabButton { text: "Wi‑Fi" }
-        Controls.TabButton { text: "Firewall" }
+        Controls.TabButton { text: qsTr("Interfaces") }
+        Controls.TabButton { text: qsTr("Wi‑Fi") }
+        Controls.TabButton { text: qsTr("Firewall") }
     }
     StackLayout {
         Layout.fillWidth: true; Layout.fillHeight: true; currentIndex: tabs.currentIndex
@@ -31,13 +31,13 @@ ColumnLayout {
                         Kirigami.Heading {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignLeft
-                            text: "Firewall"
+                            text: qsTr("Firewall")
                             level: 2
                         }
                         Controls.Label {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignLeft
-                            text: "Proteção das conexões de rede"
+                            text: qsTr("Protection for network connections")
                             color: Kirigami.Theme.disabledTextColor
                         }
                     }
@@ -46,14 +46,14 @@ ColumnLayout {
                         Controls.Label {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignRight
-                            text: systemBackend.firewallEnabled ? "Ativo" : "Inativo"
+                            text: systemBackend.firewallEnabled ? qsTr("Active") : qsTr("Inactive")
                             font.bold: true
                             color: systemBackend.firewallEnabled ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor
                         }
                         Controls.Label {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignRight
-                            text: "Zona: " + (systemBackend.firewallZone || "não detectada")
+                            text: qsTr("Zone: %1").arg(systemBackend.firewallZone || qsTr("not detected"))
                             color: Kirigami.Theme.disabledTextColor
                         }
                     }
@@ -82,7 +82,7 @@ ColumnLayout {
                     Controls.Label {
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignLeft
-                        text: wifi ? modelData.security : (modelData.ipv4 || "Sem endereço IPv4")
+                        text: wifi ? modelData.security : (modelData.ipv4 || qsTr("No IPv4 address"))
                         color: Kirigami.Theme.disabledTextColor
                     }
                 }
@@ -97,7 +97,7 @@ ColumnLayout {
                     Controls.Label {
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignRight
-                        text: wifi ? (modelData.active ? "Conectado" : "Disponível") : connectionLabel(modelData.state)
+                        text: wifi ? (modelData.active ? qsTr("Connected") : qsTr("Available")) : connectionLabel(modelData.state)
                         color: (wifi ? modelData.active : modelData.state === "connected")
                                ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
                     }
@@ -107,9 +107,9 @@ ColumnLayout {
     }
 
     function connectionLabel(state) {
-        if (state === "connected") return "Conectado"
-        if (state === "connecting") return "Conectando"
-        if (state === "disconnected") return "Desconectado"
-        return state || "Indisponível"
+        if (state === "connected") return qsTr("Connected")
+        if (state === "connecting") return qsTr("Connecting")
+        if (state === "disconnected") return qsTr("Disconnected")
+        return state || qsTr("Unavailable")
     }
 }

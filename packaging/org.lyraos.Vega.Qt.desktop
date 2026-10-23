@@ -1,8 +1,12 @@
 [Desktop Entry]
 Type=Application
 Name=Vega Qt
-GenericName=Configurações do sistema
-Comment=Central de controle do LyraOS para KDE Plasma
+GenericName=System Settings
+GenericName[pt_BR]=Configurações do sistema
+GenericName[es]=Configuración del sistema
+Comment=LyraOS control center for KDE Plasma
+Comment[pt_BR]=Central de controle do LyraOS para KDE Plasma
+Comment[es]=Centro de control de LyraOS para KDE Plasma
 Exec=vega-qt
 Icon=vega
 Terminal=false

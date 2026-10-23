@@ -41,9 +41,9 @@ Controls.ScrollView {
             Layout.margins: 28
             Layout.bottomMargin: 0
             spacing: 3
-            Kirigami.Heading { text: "Data, Hora e Idioma"; level: 1 }
+            Kirigami.Heading { text: qsTr("Date, Time and Language"); level: 1 }
             Controls.Label {
-                text: "Ajuste a região, o relógio e o layout de teclado do sistema"
+                text: qsTr("Adjust the system region, clock and keyboard layout")
                 color: Kirigami.Theme.disabledTextColor
             }
         }
@@ -66,8 +66,8 @@ Controls.ScrollView {
                     Layout.fillWidth: true
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 2
-                        Controls.Label { text: "Fuso horário"; font.bold: true }
-                        Controls.Label { text: "Define a hora local exibida pelo sistema"; color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { text: qsTr("Time zone"); font.bold: true }
+                        Controls.Label { text: qsTr("Sets the local time shown by the system"); color: Kirigami.Theme.disabledTextColor }
                     }
                     Controls.ComboBox {
                         id: timezoneBox
@@ -83,10 +83,10 @@ Controls.ScrollView {
                     Layout.fillWidth: true
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 2
-                        Controls.Label { text: "Data e hora automáticas"; font.bold: true }
-                        Controls.Label { text: "Sincroniza o relógio pela rede (NTP)"; color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { text: qsTr("Automatic date and time"); font.bold: true }
+                        Controls.Label { text: qsTr("Synchronizes the clock over the network (NTP)"); color: Kirigami.Theme.disabledTextColor }
                     }
-                    Controls.Switch { id: ntpSwitch; text: checked ? "Ativado" : "Desativado" }
+                    Controls.Switch { id: ntpSwitch; text: checked ? qsTr("On") : qsTr("Off") }
                 }
 
                 Kirigami.Separator { Layout.fillWidth: true }
@@ -95,8 +95,8 @@ Controls.ScrollView {
                     Layout.fillWidth: true
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 2
-                        Controls.Label { text: "Idioma e região"; font.bold: true }
-                        Controls.Label { text: "Formato usado por aplicativos e pelo sistema"; color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { text: qsTr("Language and region"); font.bold: true }
+                        Controls.Label { text: qsTr("Format used by applications and the system"); color: Kirigami.Theme.disabledTextColor }
                     }
                     Controls.ComboBox {
                         id: localeBox
@@ -112,8 +112,8 @@ Controls.ScrollView {
                     Layout.fillWidth: true
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 2
-                        Controls.Label { text: "Layout do teclado"; font.bold: true }
-                        Controls.Label { text: "Mapa de teclas usado no console e na sessão"; color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { text: qsTr("Keyboard layout"); font.bold: true }
+                        Controls.Label { text: qsTr("Keymap used on the console and in the session"); color: Kirigami.Theme.disabledTextColor }
                     }
                     Controls.ComboBox {
                         id: keymapBox
@@ -131,12 +131,12 @@ Controls.ScrollView {
             Layout.rightMargin: 28
             Item { Layout.fillWidth: true }
             Controls.Button {
-                text: "Restaurar"
+                text: qsTr("Reset")
                 icon.name: "view-refresh"
                 onClicked: systemBackend.refreshDateTime()
             }
             Controls.Button {
-                text: "Aplicar alterações"
+                text: qsTr("Apply changes")
                 icon.name: "dialog-ok-apply"
                 highlighted: true
                 onClicked: systemBackend.applyDateTime(

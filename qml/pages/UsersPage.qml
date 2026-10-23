@@ -6,9 +6,9 @@ import org.kde.kirigami as Kirigami
 ColumnLayout {
     RowLayout {
         Layout.fillWidth: true; Layout.margins: 28; Layout.bottomMargin: 0
-        Kirigami.Heading { Layout.fillWidth: true; text: "Usuários"; level: 1 }
-        Controls.Button { text: "Atualizar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshUsers() }
-        Controls.Button { text: "Novo usuário"; icon.name: "list-add-user"; enabled: false }
+        Kirigami.Heading { Layout.fillWidth: true; text: qsTr("Users"); level: 1 }
+        Controls.Button { text: qsTr("Refresh"); icon.name: "view-refresh"; onClicked: systemBackend.refreshUsers() }
+        Controls.Button { text: qsTr("New user"); icon.name: "list-add-user"; enabled: false }
     }
     Controls.ScrollView {
         Layout.fillWidth: true; Layout.fillHeight: true; Layout.margins: 28; Layout.topMargin: 0
@@ -24,7 +24,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         Controls.Label { text: modelData.fullName || modelData.username; font.bold: true; font.pixelSize: 17 }
                         Controls.Label { text: modelData.username; color: window.secondaryText }
-                        Controls.Label { text: modelData.admin ? "Administrador" : "Usuário padrão"; color: modelData.admin ? Kirigami.Theme.positiveTextColor : window.secondaryText }
+                        Controls.Label { text: modelData.admin ? qsTr("Administrator") : qsTr("Standard user"); color: modelData.admin ? Kirigami.Theme.positiveTextColor : window.secondaryText }
                         Controls.Label { Layout.fillWidth: true; text: modelData.groups; elide: Text.ElideRight; color: window.secondaryText }
                     }
                 }

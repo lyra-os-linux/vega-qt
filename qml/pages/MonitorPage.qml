@@ -7,14 +7,14 @@ import "../components"
 ColumnLayout {
     RowLayout {
         Layout.fillWidth: true; Layout.margins: 28; Layout.bottomMargin: 0
-        Kirigami.Heading { Layout.fillWidth: true; text: "Monitor do Sistema"; level: 1 }
-        Controls.Button { text: "Atualizar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshMonitor() }
+        Kirigami.Heading { Layout.fillWidth: true; text: qsTr("System Monitor"); level: 1 }
+        Controls.Button { text: qsTr("Refresh"); icon.name: "view-refresh"; onClicked: systemBackend.refreshMonitor() }
     }
     GridLayout {
         Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28; columns: 3
         MetricCard { title: "CPU"; value: Number(systemBackend.metrics.cpu || 0).toFixed(1) + "%"; progress: Number(systemBackend.metrics.cpu || 0) }
-        MetricCard { title: "Memória"; value: Number(systemBackend.metrics.memory || 0).toFixed(1) + "%"; progress: Number(systemBackend.metrics.memory || 0) }
-        MetricCard { title: "GPU"; value: Number(systemBackend.metrics.gpu || 0) >= 0 ? Number(systemBackend.metrics.gpu).toFixed(1) + "%" : "Indisponível"; progress: Math.max(0, Number(systemBackend.metrics.gpu || 0)) }
+        MetricCard { title: qsTr("Memory"); value: Number(systemBackend.metrics.memory || 0).toFixed(1) + "%"; progress: Number(systemBackend.metrics.memory || 0) }
+        MetricCard { title: "GPU"; value: Number(systemBackend.metrics.gpu || 0) >= 0 ? Number(systemBackend.metrics.gpu).toFixed(1) + "%" : qsTr("Unavailable"); progress: Math.max(0, Number(systemBackend.metrics.gpu || 0)) }
     }
     Controls.ScrollView {
         Layout.fillWidth: true; Layout.fillHeight: true; Layout.margins: 28; Layout.topMargin: 0
@@ -28,11 +28,11 @@ ColumnLayout {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignLeft; text: modelData.name; font.bold: true }
-                        Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignLeft; text: modelData.user + "  •  PID " + modelData.pid; color: Kirigami.Theme.disabledTextColor }
+                        Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignLeft; text: qsTr("%1  •  PID %2").arg(modelData.user).arg(modelData.pid); color: Kirigami.Theme.disabledTextColor }
                     }
                     ColumnLayout {
                         Layout.preferredWidth: 170
-                        Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: Number(modelData.cpu).toFixed(1) + "% CPU"; font.bold: true }
+                        Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: qsTr("%1% CPU").arg(Number(modelData.cpu).toFixed(1)); font.bold: true }
                         Controls.Label { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: modelData.state; color: Kirigami.Theme.disabledTextColor }
                     }
                 }

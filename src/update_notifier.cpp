@@ -7,6 +7,8 @@
 #include <QSettings>
 #include <QTimer>
 
+#include "translations.h"
+
 class UpdateNotifier final : public QObject
 {
     Q_OBJECT
@@ -69,10 +71,10 @@ private slots:
         const QDBusMessage reply = notifications.call(QStringLiteral("Notify"),
             QStringLiteral("Vega"), m_notificationId,
             QStringLiteral("system-software-update"),
-            tr("Atualizações disponíveis"),
-            tr("%1 pacote(s) aguardando atualização").arg(count),
+            tr("Updates available"),
+            tr("%n package(s) waiting to be updated", nullptr, int(count)),
             QStringList{QStringLiteral("default"), QString(),
-                        QStringLiteral("open"), tr("Abrir Software e Atualizações")},
+                        QStringLiteral("open"), tr("Open Software and Updates")},
             hints, -1);
         if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty())
             m_notificationId = reply.arguments().first().toUInt();
@@ -91,6 +93,7 @@ private:
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
+    installVegaTranslations(app);
     QCoreApplication::setApplicationName(QStringLiteral("Vega Update Notifier"));
     UpdateNotifier notifier;
     return app.exec();

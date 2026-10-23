@@ -9,16 +9,16 @@ Controls.ScrollView {
         width: parent.width; spacing: Kirigami.Units.largeSpacing
         RowLayout {
             Layout.fillWidth: true; Layout.margins: 28; Layout.bottomMargin: 0
-            Kirigami.Heading { Layout.fillWidth: true; text: "Hardware e Kernel"; level: 1 }
-            Controls.Button { text: "Atualizar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshHardware() }
+            Kirigami.Heading { Layout.fillWidth: true; text: qsTr("Hardware and Kernel"); level: 1 }
+            Controls.Button { text: qsTr("Refresh"); icon.name: "view-refresh"; onClicked: systemBackend.refreshHardware() }
         }
         GridLayout {
             Layout.fillWidth: true; Layout.margins: 28; Layout.topMargin: 0; columns: 3
             Repeater {
                 model: [
-                    { title: "Processador", value: systemBackend.hardware.cpu || "Indisponível", icon: "cpu" },
-                    { title: "Gráficos", value: systemBackend.hardware.gpu || "Indisponível", icon: "video-display" },
-                    { title: "Memória", value: systemBackend.hardware.ram || "Indisponível", icon: "memory" }
+                    { title: qsTr("Processor"), value: systemBackend.hardware.cpu || qsTr("Unavailable"), icon: "cpu" },
+                    { title: qsTr("Graphics"), value: systemBackend.hardware.gpu || qsTr("Unavailable"), icon: "video-display" },
+                    { title: qsTr("Memory"), value: systemBackend.hardware.ram || qsTr("Unavailable"), icon: "memory" }
                 ]
                 delegate: Kirigami.AbstractCard {
                     background: Rectangle { color: window.cardColor; radius: 7; border.color: Qt.alpha(window.primaryText, 0.14) }
@@ -32,7 +32,7 @@ Controls.ScrollView {
                 }
             }
         }
-        Kirigami.Heading { Layout.leftMargin: 28; text: "Kernels instalados"; level: 2 }
+        Kirigami.Heading { Layout.leftMargin: 28; text: qsTr("Installed kernels"); level: 2 }
         Repeater {
             model: systemBackend.kernels
             delegate: Kirigami.AbstractCard {
@@ -42,7 +42,7 @@ Controls.ScrollView {
                 contentItem: RowLayout {
                     Kirigami.Icon { source: "computer"; implicitWidth: 24; implicitHeight: 24 }
                     Controls.Label { Layout.fillWidth: true; text: modelData; font.bold: true }
-                    Controls.Label { text: "Instalado"; color: Kirigami.Theme.positiveTextColor }
+                    Controls.Label { text: qsTr("Installed"); color: Kirigami.Theme.positiveTextColor }
                 }
             }
         }

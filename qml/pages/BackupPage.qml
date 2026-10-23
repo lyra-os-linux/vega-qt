@@ -11,7 +11,7 @@ ColumnLayout {
     spacing: Kirigami.Units.largeSpacing
 
     function frequencyLabel(value) {
-        return ({"daily": "Diário", "weekly": "Semanal", "on-connect": "Ao conectar", "manual": "Manual"})[value] || value
+        return ({"daily": qsTr("Daily"), "weekly": qsTr("Weekly"), "on-connect": qsTr("On connect"), "manual": qsTr("Manual")})[value] || value
     }
     function sizeLabel(bytes) {
         if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + " GB"
@@ -23,10 +23,10 @@ ColumnLayout {
         Layout.fillWidth: true; Layout.margins: 28; Layout.bottomMargin: 0
         ColumnLayout {
             Layout.fillWidth: true; spacing: 2
-            Kirigami.Heading { text: "Backup"; level: 1 }
-            Controls.Label { text: "Proteja seus arquivos com cópias versionadas pelo Restic"; color: Kirigami.Theme.disabledTextColor }
+            Kirigami.Heading { text: qsTr("Backup"); level: 1 }
+            Controls.Label { text: qsTr("Protect your files with versioned copies made by Restic"); color: Kirigami.Theme.disabledTextColor }
         }
-        Controls.Button { text: "Nova rotina"; icon.name: "list-add"; onClicked: createDialog.open() }
+        Controls.Button { text: qsTr("New routine"); icon.name: "list-add"; onClicked: createDialog.open() }
     }
 
     Rectangle {
@@ -48,8 +48,8 @@ ColumnLayout {
     Controls.TabBar {
         id: tabs
         Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28
-        Controls.TabButton { text: "Rotinas"; icon.name: "document-save" }
-        Controls.TabButton { text: "Pontos de restauração"; icon.name: "edit-undo-history" }
+        Controls.TabButton { text: qsTr("Routines"); icon.name: "document-save" }
+        Controls.TabButton { text: qsTr("Restore points"); icon.name: "edit-undo-history" }
     }
 
     Controls.ScrollView {
@@ -61,7 +61,7 @@ ColumnLayout {
             Controls.Label {
                 visible: systemBackend.backupConfigs.length === 0
                 Layout.fillWidth: true; Layout.margins: 28
-                text: "Nenhuma rotina configurada. Crie uma para começar a proteger seus arquivos."
+                text: qsTr("No routine configured. Create one to start protecting your files.")
                 horizontalAlignment: Text.AlignHCenter; color: Kirigami.Theme.disabledTextColor
             }
             Repeater {
@@ -78,18 +78,18 @@ ColumnLayout {
                             Layout.fillWidth: true; spacing: 3
                             Controls.Label { text: modelData.id; font.bold: true; font.pixelSize: 16 }
                             Controls.Label { text: modelData.paths; color: Kirigami.Theme.disabledTextColor; elide: Text.ElideMiddle; Layout.fillWidth: true }
-                            Controls.Label { text: "Destino: " + modelData.destination; color: Kirigami.Theme.disabledTextColor; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                            Controls.Label { text: qsTr("Destination: %1").arg(modelData.destination); color: Kirigami.Theme.disabledTextColor; elide: Text.ElideMiddle; Layout.fillWidth: true }
                         }
                         ColumnLayout {
                             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter; spacing: 5
                             Controls.Label { Layout.alignment: Qt.AlignRight; text: root.frequencyLabel(modelData.frequency); font.bold: true }
                             RowLayout {
                                 Controls.Button {
-                                    text: "Executar agora"; icon.name: "media-playback-start"
+                                    text: qsTr("Run now"); icon.name: "media-playback-start"
                                     onClicked: systemBackend.runBackup(modelData.id)
                                 }
                                 Controls.ToolButton {
-                                    icon.name: "edit-delete"; text: "Excluir"; display: Controls.AbstractButton.IconOnly
+                                    icon.name: "edit-delete"; text: qsTr("Delete"); display: Controls.AbstractButton.IconOnly
                                     onClicked: { root.selectedConfig = modelData.id; deleteDialog.open() }
                                 }
                             }
@@ -113,13 +113,13 @@ ColumnLayout {
             width: parent.width; spacing: Kirigami.Units.largeSpacing
             RowLayout {
                 Layout.fillWidth: true; Layout.leftMargin: 28; Layout.rightMargin: 28
-                Controls.Label { Layout.fillWidth: true; text: root.selectedConfig.length ? "Rotina: " + root.selectedConfig : "Selecione uma rotina"; font.bold: true }
-                Controls.Button { text: "Atualizar"; icon.name: "view-refresh"; onClicked: systemBackend.refreshBackup(root.selectedConfig) }
+                Controls.Label { Layout.fillWidth: true; text: root.selectedConfig.length ? qsTr("Routine: %1").arg(root.selectedConfig) : qsTr("Select a routine"); font.bold: true }
+                Controls.Button { text: qsTr("Refresh"); icon.name: "view-refresh"; onClicked: systemBackend.refreshBackup(root.selectedConfig) }
             }
             Controls.Label {
                 visible: systemBackend.backupSnapshots.length === 0
                 Layout.fillWidth: true; Layout.margins: 28
-                text: "Nenhum ponto de restauração encontrado."
+                text: qsTr("No restore points found.")
                 horizontalAlignment: Text.AlignHCenter; color: Kirigami.Theme.disabledTextColor
             }
             Repeater {
@@ -138,11 +138,11 @@ ColumnLayout {
                             Controls.Label { text: modelData.id; color: Kirigami.Theme.disabledTextColor }
                         }
                         ColumnLayout {
-                            Controls.Label { Layout.alignment: Qt.AlignRight; text: modelData.files + " arquivos" }
+                            Controls.Label { Layout.alignment: Qt.AlignRight; text: qsTr("%n file(s)", "", modelData.files) }
                             Controls.Label { Layout.alignment: Qt.AlignRight; text: root.sizeLabel(modelData.bytes); color: Kirigami.Theme.disabledTextColor }
                         }
                         Controls.Button {
-                            text: "Restaurar"; icon.name: "edit-undo"
+                            text: qsTr("Restore"); icon.name: "edit-undo"
                             onClicked: { root.selectedSnapshot = modelData.id; restoreDialog.open() }
                         }
                     }
@@ -154,46 +154,46 @@ ColumnLayout {
     Controls.Dialog {
         id: createDialog
         anchors.centerIn: parent; width: 560
-        title: "Nova rotina de backup"; modal: true
+        title: qsTr("New backup routine"); modal: true
         standardButtons: Controls.Dialog.Cancel | Controls.Dialog.Save
         onAccepted: systemBackend.createBackupConfig(idField.text, pathsField.text, destinationField.text, uuidField.text, frequencyBox.currentValue)
         ColumnLayout {
             width: parent.width
-            Controls.Label { text: "Nome"; font.bold: true }
-            Controls.TextField { id: idField; Layout.fillWidth: true; placeholderText: "documentos" }
-            Controls.Label { text: "Pastas (separadas por vírgula)"; font.bold: true }
-            Controls.TextField { id: pathsField; Layout.fillWidth: true; placeholderText: "/home/usuario/Documentos, /home/usuario/Imagens" }
-            Controls.Label { text: "Destino"; font.bold: true }
+            Controls.Label { text: qsTr("Name"); font.bold: true }
+            Controls.TextField { id: idField; Layout.fillWidth: true; placeholderText: qsTr("documents") }
+            Controls.Label { text: qsTr("Folders (comma-separated)"); font.bold: true }
+            Controls.TextField { id: pathsField; Layout.fillWidth: true; placeholderText: qsTr("/home/user/Documents, /home/user/Pictures") }
+            Controls.Label { text: qsTr("Destination"); font.bold: true }
             Controls.TextField { id: destinationField; Layout.fillWidth: true; placeholderText: "/mnt/backup/Lyra" }
-            Controls.Label { text: "UUID do dispositivo removível (opcional)"; font.bold: true }
-            Controls.TextField { id: uuidField; Layout.fillWidth: true; placeholderText: "Deixe vazio para um destino permanente" }
-            Controls.Label { text: "Frequência"; font.bold: true }
+            Controls.Label { text: qsTr("Removable device UUID (optional)"); font.bold: true }
+            Controls.TextField { id: uuidField; Layout.fillWidth: true; placeholderText: qsTr("Leave empty for a permanent destination") }
+            Controls.Label { text: qsTr("Frequency"); font.bold: true }
             Controls.ComboBox {
                 id: frequencyBox; Layout.fillWidth: true; textRole: "text"; valueRole: "value"
-                model: [{text: "Diário", value: "daily"}, {text: "Semanal", value: "weekly"},
-                        {text: "Ao conectar o dispositivo", value: "on-connect"}, {text: "Manual", value: "manual"}]
+                model: [{text: qsTr("Daily"), value: "daily"}, {text: qsTr("Weekly"), value: "weekly"},
+                        {text: qsTr("When the device is connected"), value: "on-connect"}, {text: qsTr("Manual"), value: "manual"}]
             }
         }
     }
 
     Controls.Dialog {
         id: deleteDialog; anchors.centerIn: parent; modal: true
-        title: "Excluir rotina?"; standardButtons: Controls.Dialog.Cancel | Controls.Dialog.Yes
+        title: qsTr("Delete routine?"); standardButtons: Controls.Dialog.Cancel | Controls.Dialog.Yes
         onAccepted: systemBackend.deleteBackupConfig(root.selectedConfig)
-        Controls.Label { text: "A rotina será removida, mas o repositório de backup no destino será preservado."; wrapMode: Text.WordWrap; width: 420 }
+        Controls.Label { text: qsTr("The routine will be removed, but the backup repository at the destination will be kept."); wrapMode: Text.WordWrap; width: 420 }
     }
 
     Controls.Dialog {
         id: restoreDialog; anchors.centerIn: parent; width: 520; modal: true
-        title: "Restaurar ponto"; standardButtons: Controls.Dialog.Cancel | Controls.Dialog.Ok
+        title: qsTr("Restore point"); standardButtons: Controls.Dialog.Cancel | Controls.Dialog.Ok
         onAccepted: systemBackend.restoreBackup(root.selectedSnapshot, restoreTarget.text)
         ColumnLayout {
             width: parent.width
-            Controls.Label { text: "Pasta de destino"; font.bold: true }
-            Controls.TextField { id: restoreTarget; Layout.fillWidth: true; placeholderText: "/home/usuario/Restaurados" }
+            Controls.Label { text: qsTr("Destination folder"); font.bold: true }
+            Controls.TextField { id: restoreTarget; Layout.fillWidth: true; placeholderText: qsTr("/home/user/Restored") }
             Controls.Label {
                 Layout.fillWidth: true
-                text: "Os arquivos serão restaurados em uma nova subpasta. Os dados existentes não serão sobrescritos."
+                text: qsTr("Files will be restored into a new subfolder. Existing data will not be overwritten.")
                 color: Kirigami.Theme.disabledTextColor; wrapMode: Text.WordWrap
             }
         }
